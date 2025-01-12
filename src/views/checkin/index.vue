@@ -7,7 +7,7 @@
         <el-col :span="8">
           <el-card shadow="never" class="stat-card">
             <div class="stat-content">
-              <div class="stat-value">{{ todayHours || '0' }}小时</div>
+              <div class="stat-value">{{ formatDuration(todayHours) }}小时</div>
               <div class="stat-label">今日工作时长</div>
             </div>
           </el-card>
@@ -15,7 +15,7 @@
         <el-col :span="8">
           <el-card shadow="never" class="stat-card">
             <div class="stat-content">
-              <div class="stat-value">{{ weekHours || '0' }}小时</div>
+              <div class="stat-value">{{ formatDuration(weekHours) }}小时</div>
               <div class="stat-label">本周工作时长</div>
             </div>
           </el-card>
@@ -23,7 +23,7 @@
         <el-col :span="8">
           <el-card shadow="never" class="stat-card">
             <div class="stat-content">
-              <div class="stat-value">{{ monthHours || '0' }}小时</div>
+              <div class="stat-value">{{ formatDuration(monthHours) }}小时</div>
               <div class="stat-label">本月工作时长</div>
             </div>
           </el-card>
@@ -158,21 +158,32 @@ const showAddTask = ref(false)
 
 // 获取统计数据
 const getStatistics = async () => {
-  // 暂时注释掉接口调用，使用静态数据
-  /*try {
-    const response = await request.get('/checkin/statistics')
-    const { today, week, month } = response.data
-    todayHours.value = today
-    weekHours.value = week
-    monthHours.value = month
+  try {
+    // 添加调试日志
+    console.log('Store state:', userStore.$state)
+    console.log('Store account:', userStore.account)
+    console.log('Store getAccount:', userStore.getAccount)
+    console.log('LocalStorage account:', localStorage.getItem('account'))
+
+    const account = userStore.getAccount
+    if (!account) {
+      throw new Error('未获取到用户账号')
+    }
+
+    const response = await request.post('/signDuration/queryTodayWeekMonth', {
+      account: account
+    })
+
+    if (response.data.code === '200') {
+      const { signDurationToday, signDurationWeek, signDurationMonth } = response.data.data
+      todayHours.value = signDurationToday
+      weekHours.value = signDurationWeek
+      monthHours.value = signDurationMonth
+    }
   } catch (error) {
     console.error('获取统计数据失败:', error)
-  }*/
-  
-  // 使用静态数据
-  todayHours.value = 0
-  weekHours.value = 0
-  monthHours.value = 0
+    ElMessage.error('获取统计数据失败：' + error.message)
+  }
 }
 
 // 在组件挂载时获取统计数据
@@ -270,8 +281,8 @@ const handleCurrentChange = (val) => {
 
 // 修改时长格式化方法
 const formatDuration = (hours) => {
-  if (hours === null || hours === undefined) return '--'
-  return Number(hours).toFixed(1) // 保留一位小数
+  if (hours === null || hours === undefined) return '0.0'
+  return Number(hours).toFixed(1)
 }
 
 // 处理页码跳转

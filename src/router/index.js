@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Layout from '@/layout/index.vue'
+import { useUserStore } from '@/stores/user'
 
 export const constantRoutes = [
   {
@@ -121,6 +122,7 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
+  const userStore = useUserStore()
   
   // 如果访问的不是登录页且没有token，重定向到登录页
   if (to.path !== '/login' && !token) {
