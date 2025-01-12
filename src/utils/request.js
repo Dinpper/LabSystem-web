@@ -27,16 +27,11 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   response => {
-    const res = response.data
-    if (res.code !== '200' && res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
-      return Promise.reject(new Error(res.message || '请求失败'))
-    }
-    return res
+    console.log('响应拦截器:', response)
+    return response
   },
   error => {
-    console.error('Response error:', error)
-    ElMessage.error(error.message || '请求失败')
+    console.error('响应错误:', error)
     return Promise.reject(error)
   }
 )

@@ -29,7 +29,7 @@ export const constantRoutes = [
         path: '',
         name: 'CheckIn',
         component: () => import('@/views/checkin/index.vue'),
-        meta: { title: '签到', icon: 'Calendar', requiresAuth: true }
+        meta: { title: '签到时长', icon: 'Timer', requiresAuth: true }
       }
     ]
   },
