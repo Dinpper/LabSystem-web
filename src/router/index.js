@@ -45,13 +45,13 @@ export const constantRoutes = [
         path: 'daily',
         name: 'Daily',
         component: () => import('@/views/report/daily.vue'),
-        meta: { title: '日报提交', icon: 'Edit', requiresAuth: true }
+        meta: { title: '报告提交', icon: 'Edit', requiresAuth: true }
       },
       {
         path: 'list',
         name: 'ReportList',
         component: () => import('@/views/report/list.vue'),
-        meta: { title: '报告', icon: 'Files', requiresAuth: true }
+        meta: { title: '报告记录', icon: 'Files', requiresAuth: true }
       }
     ]
   },
@@ -62,16 +62,16 @@ export const constantRoutes = [
     meta: { title: '会议', icon: 'Calendar' },
     children: [
       {
-        path: '',
-        name: 'Meeting',
-        component: () => import('@/views/meeting/index.vue'),
-        meta: { title: '会议', icon: 'Bell', requiresAuth: true }
-      },
-      {
         path: 'schedule',
         name: 'MeetingSchedule',
         component: () => import('@/views/meeting/schedule.vue'),
-        meta: { title: '开会时间', requiresAuth: true }
+        meta: { title: '会议发布', requiresAuth: true }
+      },
+      {
+        path: '',
+        name: 'Meeting',
+        component: () => import('@/views/meeting/index.vue'),
+        meta: { title: '会议记录', icon: 'Bell', requiresAuth: true }
       }
     ]
   },
@@ -105,6 +105,26 @@ export const constantRoutes = [
         name: 'AllProjects',
         component: () => import('@/views/project/all.vue'),
         meta: { title: '全部项目', icon: 'Grid', requiresAuth: true }
+      }
+    ]
+  },
+  {
+    path: '/organization',
+    component: Layout,
+    name: 'Organization',
+    meta: { title: '组织管理', icon: 'Operation' },
+    children: [
+      {
+        path: 'members',
+        name: 'Members',
+        component: () => import('@/views/organization/members.vue'),
+        meta: { title: '人员管理', icon: 'User', requiresAuth: true }
+      },
+      {
+        path: 'groups',
+        name: 'Groups',
+        component: () => import('@/views/organization/groups.vue'),
+        meta: { title: '小组管理', icon: 'UserFilled', requiresAuth: true }
       }
     ]
   },

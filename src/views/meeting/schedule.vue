@@ -1,192 +1,236 @@
 <template>
   <div class="page-container">
     <el-card class="schedule-card">
-      <template #header>
-        <div class="card-header">
-          <span class="header-title">会议时间安排</span>
-          <el-button type="primary" @click="handlePublish" :disabled="!selectedSlot">发布会议</el-button>
-        </div>
-      </template>
+      <div class="schedule-layout">
+        <!-- 左侧发布会议表单 -->
+        <div class="meeting-form-section">
+          <h3 class="section-title">发布会议</h3>
+          <el-form :model="meetingForm" label-width="80px">
+            <el-form-item label="主题" required>
+              <el-input v-model="meetingForm.title" placeholder="请输入会议主题"/>
+            </el-form-item>
+            
+            <el-form-item label="地点" required>
+              <el-input v-model="meetingForm.location" placeholder="请输入会议地点"/>
+            </el-form-item>
 
-      <!-- 参会人员选择 -->
-      <div class="form-section">
-        <el-form :model="formData" label-width="100px">
-          <el-form-item label="参会人员">
-            <div class="participants-input" @click="showParticipantDialog">
-              <div v-if="formData.participants.length === 0" class="placeholder">
-                请选择参会人员
+            <el-form-item label="参会人员">
+              <div class="participants-display" @click="showParticipantDialog">
+                <template v-if="formData.participants.length === 0">
+                  <el-button link type="primary">
+                    <el-icon><Plus /></el-icon>
+                    选择参会人员
+                  </el-button>
+                </template>
+                <template v-else>
+                  <div class="selected-participants">
+                    <el-avatar-group :size="32" :max="3">
+                      <el-avatar
+                        v-for="user in selectedParticipants"
+                        :key="user.value"
+                      >
+                        {{ user.label.substring(0, 1) }}
+                      </el-avatar>
+                    </el-avatar-group>
+                    <span class="participant-count">
+                      共 {{ formData.participants.length }} 人
+                    </span>
+                    <el-button link type="primary" class="edit-btn">
+                      编辑
+                    </el-button>
+                  </div>
+                </template>
               </div>
-              <div v-else class="selected-avatars">
-                <el-avatar
-                  v-for="user in selectedParticipants"
-                  :key="user.value"
-                  :size="32"
-                  class="user-avatar"
-                >
-                  {{ user.label.substring(0, 1) }}
-                </el-avatar>
-                <span class="user-count" v-if="formData.participants.length > 0">
-                  共 {{ formData.participants.length }} 人
-                </span>
-              </div>
-            </div>
-          </el-form-item>
-        </el-form>
-      </div>
+            </el-form-item>
 
-      <!-- 人员选择弹窗 -->
-      <el-dialog
-        v-model="participantDialogVisible"
-        title="选择参会人员"
-        width="800px"
-        class="participant-dialog"
-      >
-        <div class="dialog-content">
-          <!-- 左侧分组和人员列表 -->
-          <div class="group-list">
-            <div class="search-box">
+            <el-form-item label="会议时间" required>
+              <div v-if="selectedSlot" class="selected-time-display">
+                {{ formatDate(selectedSlot.date) }} {{ selectedSlot.time }}
+                <el-button link type="primary" @click="selectedSlot = null">
+                  重新选择
+                </el-button>
+              </div>
+              <el-button 
+                v-else 
+                link 
+                type="primary"
+                @click="scrollToTimeTable"
+              >
+                <el-icon><Timer /></el-icon>
+                从右侧课表选择时间
+              </el-button>
+            </el-form-item>
+
+            <el-form-item label="会议内容" required>
               <el-input
-                v-model="searchKeyword"
-                placeholder="搜索人员"
-                :prefix-icon="Search"
-                clearable
+                v-model="meetingForm.description"
+                type="textarea"
+                :rows="6"
+                placeholder="请输入会议内容描述"
               />
+            </el-form-item>
+
+            <el-form-item>
+              <el-button 
+                type="primary" 
+                @click="handlePublish"
+                :disabled="!canPublish"
+              >
+                发布会议
+              </el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <!-- 右侧课表 -->
+        <div class="timetable-section">
+          <h3 class="section-title">会议时间选择</h3>
+          <div class="calendar-grid">
+            <!-- 时间列 -->
+            <div class="time-column">
+              <div class="time-header">时间</div>
+              <div class="time-slot" v-for="time in timeSlots" :key="time">
+                {{ time }}
+              </div>
             </div>
             
-            <div class="groups-container">
-              <el-collapse v-model="activeGroups">
-                <el-collapse-item
-                  v-for="group in departments"
-                  :key="group.id"
-                  :name="group.id"
-                >
-                  <template #title>
-                    <div class="group-title">
-                      <span>{{ group.name }}</span>
-                      <span class="group-count">{{ getDeptUserCount(group.id) }}人</span>
-                    </div>
-                  </template>
-                  <div class="group-users">
-                    <div
-                      v-for="user in getUsersByGroup(group.id)"
-                      :key="user.value"
-                      class="user-item"
-                    >
-                      <el-checkbox
-                        v-model="tempSelectedUsers"
-                        :label="user.value"
-                        @change="handleUserSelect(user)"
-                      >
-                        <div class="user-info">
-                          <el-avatar :size="28" class="user-avatar">
-                            {{ user.label.substring(0, 1) }}
-                          </el-avatar>
-                          <span class="user-name">{{ user.label }}</span>
-                        </div>
-                      </el-checkbox>
-                    </div>
-                  </div>
-                </el-collapse-item>
-              </el-collapse>
-            </div>
-          </div>
-
-          <!-- 右侧已选人员 -->
-          <div class="selected-panel">
-            <div class="panel-header">
-              <span class="header-title">已选择人员</span>
-              <div class="header-actions">
-                <span class="selected-count">{{ tempSelectedUsers.length }}人</span>
-                <el-button
-                  type="primary"
-                  link
-                  @click="tempSelectedUsers = []"
-                  :disabled="tempSelectedUsers.length === 0"
-                >
-                  清空
-                </el-button>
+            <!-- 每天的时间格子 -->
+            <div class="day-column" v-for="day in weekDays" :key="day.date">
+              <div class="day-header">
+                {{ day.dayOfWeek }}
               </div>
-            </div>
-            <div class="selected-users">
-              <el-empty
-                v-if="tempSelectedUsers.length === 0"
-                description="未选择任何人员"
-              />
               <div
-                v-else
-                v-for="userId in tempSelectedUsers"
-                :key="userId"
-                class="selected-user-item"
+                v-for="time in timeSlots"
+                :key="time"
+                class="time-cell"
+                :class="{
+                  'available': isTimeSlotAvailable(day.date, time),
+                  'selected': isTimeSlotSelected(day.date, time)
+                }"
+                @click="handleTimeSlotClick(day.date, time)"
               >
-                <div class="user-info">
-                  <el-avatar :size="28" class="user-avatar">
-                    {{ getUserLabel(userId).substring(0, 1) }}
-                  </el-avatar>
-                  <div class="user-details">
-                    <span class="user-name">{{ getUserLabel(userId) }}</span>
-                    <span class="user-dept">{{ getUserDept(userId) }}</span>
-                  </div>
-                </div>
-                <el-button
-                  type="danger"
-                  link
-                  class="remove-button"
-                  @click="removeUser(userId)"
-                >
-                  移除
-                </el-button>
+                <span v-if="isTimeSlotAvailable(day.date, time)" class="available-count">
+                  {{ getAvailableCount(day.date, time) }}人可用
+                </span>
               </div>
-            </div>
-          </div>
-        </div>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="participantDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmParticipants">确定</el-button>
-          </span>
-        </template>
-      </el-dialog>
-
-      <!-- 周视图日历 -->
-      <div class="calendar-view" v-if="formData.participants.length > 0">
-        <div class="calendar-header">
-          <el-button @click="prevWeek">上一周</el-button>
-          <span class="week-range">{{ weekRange }}</span>
-          <el-button @click="nextWeek">下一周</el-button>
-        </div>
-        
-        <div class="calendar-grid">
-          <!-- 时间列 -->
-          <div class="time-column">
-            <div class="time-header">时间</div>
-            <div class="time-slot" v-for="time in timeSlots" :key="time">
-              {{ time }}
-            </div>
-          </div>
-          
-          <!-- 每天的时间格子 -->
-          <div class="day-column" v-for="day in weekDays" :key="day.date">
-            <div class="day-header">
-              {{ day.dayOfWeek }}<br>{{ day.date }}
-            </div>
-            <div
-              v-for="time in timeSlots"
-              :key="time"
-              class="time-cell"
-              :class="{
-                'available': isTimeSlotAvailable(day.date, time),
-                'selected': isTimeSlotSelected(day.date, time)
-              }"
-              @click="handleTimeSlotClick(day.date, time)"
-            >
-              <span v-if="isTimeSlotAvailable(day.date, time)" class="available-count">
-                {{ getAvailableCount(day.date, time) }}人可用
-              </span>
             </div>
           </div>
         </div>
       </div>
     </el-card>
+
+    <!-- 人员选择弹窗 -->
+    <el-dialog
+      v-model="participantDialogVisible"
+      title="选择参会人员"
+      width="800px"
+      class="participant-dialog"
+    >
+      <div class="dialog-content">
+        <!-- 左侧分组和人员列表 -->
+        <div class="group-list">
+          <div class="search-box">
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索人员"
+              :prefix-icon="Search"
+              clearable
+            />
+          </div>
+          
+          <div class="groups-container">
+            <el-collapse v-model="activeGroups">
+              <el-collapse-item
+                v-for="group in departments"
+                :key="group.id"
+                :name="group.id"
+              >
+                <template #title>
+                  <div class="group-title">
+                    <span>{{ group.name }}</span>
+                    <span class="group-count">{{ getDeptUserCount(group.id) }}人</span>
+                  </div>
+                </template>
+                <div class="group-users">
+                  <div
+                    v-for="user in getUsersByGroup(group.id)"
+                    :key="user.value"
+                    class="user-item"
+                  >
+                    <el-checkbox
+                      v-model="tempSelectedUsers"
+                      :label="user.value"
+                      @change="handleUserSelect(user)"
+                    >
+                      <div class="user-info">
+                        <el-avatar :size="28" class="user-avatar">
+                          {{ user.label.substring(0, 1) }}
+                        </el-avatar>
+                        <span class="user-name">{{ user.label }}</span>
+                      </div>
+                    </el-checkbox>
+                  </div>
+                </div>
+              </el-collapse-item>
+            </el-collapse>
+          </div>
+        </div>
+
+        <!-- 右侧已选人员 -->
+        <div class="selected-panel">
+          <div class="panel-header">
+            <span class="header-title">已选择人员</span>
+            <div class="header-actions">
+              <span class="selected-count">{{ tempSelectedUsers.length }}人</span>
+              <el-button
+                type="primary"
+                link
+                @click="tempSelectedUsers = []"
+                :disabled="tempSelectedUsers.length === 0"
+              >
+                清空
+              </el-button>
+            </div>
+          </div>
+          <div class="selected-users">
+            <el-empty
+              v-if="tempSelectedUsers.length === 0"
+              description="未选择任何人员"
+            />
+            <div
+              v-else
+              v-for="userId in tempSelectedUsers"
+              :key="userId"
+              class="selected-user-item"
+            >
+              <div class="user-info">
+                <el-avatar :size="28" class="user-avatar">
+                  {{ getUserLabel(userId).substring(0, 1) }}
+                </el-avatar>
+                <div class="user-details">
+                  <span class="user-name">{{ getUserLabel(userId) }}</span>
+                  <span class="user-dept">{{ getUserDept(userId) }}</span>
+                </div>
+              </div>
+              <el-button
+                type="danger"
+                link
+                class="remove-button"
+                @click="removeUser(userId)"
+              >
+                移除
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="participantDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmParticipants">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- 发布会议对话框 -->
     <el-dialog
@@ -232,7 +276,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Check, Close } from '@element-plus/icons-vue'
+import { Check, Close, Plus, Timer } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 // 表单数据
@@ -243,6 +287,7 @@ const formData = reactive({
 // 会议表单
 const meetingForm = reactive({
   title: '',
+  location: '',
   description: ''
 })
 
@@ -259,8 +304,18 @@ const availableTimeData = ref([])
 
 // 时间槽列表
 const timeSlots = [
-  '08:00-09:00', '09:00-10:00', '10:00-11:00', '11:00-12:00',
-  '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00'
+  '08:05-08:50', // 第1节
+  '08:50-09:35', // 第2节
+  '09:45-10:30', // 第3节
+  '10:35-11:20', // 第4节
+  '11:25-12:10', // 第5节
+  '13:20-14:05', // 第6节
+  '14:10-14:55', // 第7节
+  '15:05-15:50', // 第8节
+  '15:55-16:40', // 第9节
+  '18:00-18:45', // 第10节
+  '18:50-19:35', // 第11节
+  '19:40-20:25'  // 第12节
 ]
 
 // 新增的响应式数据
@@ -412,6 +467,7 @@ const nextWeek = () => {
 // 处理发布按钮点击
 const handlePublish = () => {
   meetingForm.title = ''
+  meetingForm.location = ''
   meetingForm.description = ''
   dialogVisible.value = true
 }
@@ -426,6 +482,7 @@ const confirmPublish = async () => {
   try {
     const response = await request.post('/meeting/schedule', {
       title: meetingForm.title,
+      location: meetingForm.location,
       description: meetingForm.description,
       date: selectedSlot.value.date,
       time: selectedSlot.value.time,
@@ -438,6 +495,7 @@ const confirmPublish = async () => {
       // 重置数据
       selectedSlot.value = null
       meetingForm.title = ''
+      meetingForm.location = ''
       meetingForm.description = ''
     }
   } catch (error) {
@@ -557,18 +615,39 @@ const removeUser = (userId) => {
     tempSelectedUsers.value.splice(index, 1)
   }
 }
+
+// 新增的计算属性
+const canPublish = computed(() => {
+  return meetingForm.title && 
+         meetingForm.location && 
+         selectedSlot && 
+         formData.participants.length > 0 &&
+         meetingForm.description
+})
+
+// 新增的方法
+const scrollToTimeTable = () => {
+  // 实现滚动到时间表的逻辑
+  const timeTable = document.querySelector('.timetable-section')
+  if (timeTable) {
+    timeTable.scrollIntoView({ behavior: 'smooth' })
+  }
+}
 </script>
 
 <style scoped>
 .page-container {
-  padding: 20px;
+  padding: 8px;
   background-color: #f0f2f5;
   min-height: calc(100vh - 60px);
+  display: flex;
+  justify-content: center;
 }
 
 .schedule-card {
-  max-width: 1200px;
+  width: 1400px;
   margin: 0 auto;
+  padding: 12px;
 }
 
 .card-header {
@@ -592,34 +671,32 @@ const removeUser = (userId) => {
 }
 
 .calendar-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.week-range {
-  font-size: 16px;
-  font-weight: 500;
+  display: none;
 }
 
 .calendar-grid {
   display: flex;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  width: fit-content;
+  margin: 0 auto;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .time-column {
-  width: 100px;
+  width: 85px;
   flex-shrink: 0;
   border-right: 1px solid #dcdfe6;
 }
 
 .day-column {
-  flex: 1;
-  min-width: 120px;
+  width: 85px;
+  flex: none;
   border-right: 1px solid #dcdfe6;
+}
+
+.day-column:first-of-type {
+  width: 85px;
 }
 
 .day-column:last-child {
@@ -628,17 +705,17 @@ const removeUser = (userId) => {
 
 .time-header,
 .day-header {
-  height: 60px;
-  padding: 8px;
+  height: 36px;
+  padding: 6px;
   text-align: center;
-  background-color: #f5f7fa;
-  border-bottom: 1px solid #dcdfe6;
-  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .time-slot {
   height: 60px;
-  padding: 8px;
+  padding: 4px;
   border-bottom: 1px solid #dcdfe6;
   display: flex;
   align-items: center;
@@ -647,7 +724,10 @@ const removeUser = (userId) => {
 
 .time-cell {
   height: 60px;
-  padding: 8px;
+  padding: 4px;
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
   border-bottom: 1px solid #dcdfe6;
   display: flex;
   align-items: center;
@@ -687,7 +767,7 @@ const removeUser = (userId) => {
 }
 
 :deep(.el-form-item) {
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 :deep(.el-select) {
@@ -900,5 +980,102 @@ const removeUser = (userId) => {
 .selected-users::-webkit-scrollbar-track {
   background-color: #f5f7fa;
   border-radius: 3px;
+}
+
+.schedule-layout {
+  display: flex;
+  gap: 48px;
+  justify-content: center;
+}
+
+.meeting-form-section {
+  flex: none;
+  width: 380px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+}
+
+.timetable-section {
+  flex: none;
+  width: 800px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.section-title {
+  margin: 0 0 24px 0;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.participants-display {
+  padding: 8px;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.participants-display:hover {
+  border-color: var(--el-color-primary);
+}
+
+.selected-participants {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.participant-count {
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
+}
+
+.selected-time-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background-color: var(--el-fill-color-lighter);
+  border-radius: 4px;
+}
+
+.calendar-grid {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.time-cell {
+  height: 60px;
+  padding: 4px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.time-cell.available {
+  background-color: var(--el-color-success-light-9);
+}
+
+.time-cell.available:hover {
+  background-color: var(--el-color-success-light-8);
+}
+
+.time-cell.selected {
+  background-color: var(--el-color-primary-light-8);
+  color: var(--el-color-primary);
 }
 </style> 
