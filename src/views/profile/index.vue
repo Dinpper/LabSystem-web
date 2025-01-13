@@ -173,10 +173,26 @@ const getUserInfo = async () => {
     const response = await request.post('/user/queryUserMessage', {
       account: localStorage.getItem('username')
     })
-    userInfo.value = response.data
-    editForm.value = {
-      phone: response.data.phone,
-      email: response.data.email
+    
+    if (response.data.code === '200') {
+      const userData = response.data.data
+      userInfo.value = {
+        account: userData.account || '',
+        name: userData.name || '',
+        sex: userData.sex || 0,
+        phone: userData.phone || '',
+        grade: userData.grade || '',
+        email: userData.email || '',
+        stuNumber: userData.stuNumber || '',
+        className: userData.className || '',
+        inputDate: userData.inputDate || ''
+      }
+      
+      // 更新编辑表单的初始值
+      editForm.value = {
+        phone: userData.phone || '',
+        email: userData.email || ''
+      }
     }
   } catch (error) {
     console.error('获取用户信息失败:', error)
@@ -188,10 +204,22 @@ const handleEdit = () => {
   dialogVisible.value = true
 }
 
-const handleSave = () => {
-  // TODO: 调用保存接口
-  ElMessage.success('保存成功')
-  dialogVisible.value = false
+const handleSave = async () => {
+  try {
+    // TODO: 调用更新接口
+    // const response = await request.post('/user/updateUserInfo', {
+    //   account: userInfo.value.account,
+    //   ...editForm.value
+    // })
+    
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    // 重新获取用户信息
+    await getUserInfo()
+  } catch (error) {
+    console.error('保存失败:', error)
+    ElMessage.error('保存失败')
+  }
 }
 
 // 模拟一年的贡献数据

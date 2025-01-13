@@ -58,12 +58,20 @@ export const constantRoutes = [
   {
     path: '/meeting',
     component: Layout,
+    name: 'MeetingManage',
+    meta: { title: '会议', icon: 'Calendar' },
     children: [
       {
         path: '',
         name: 'Meeting',
         component: () => import('@/views/meeting/index.vue'),
         meta: { title: '会议', icon: 'Bell', requiresAuth: true }
+      },
+      {
+        path: 'schedule',
+        name: 'MeetingSchedule',
+        component: () => import('@/views/meeting/schedule.vue'),
+        meta: { title: '开会时间', requiresAuth: true }
       }
     ]
   },

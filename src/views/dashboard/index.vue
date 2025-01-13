@@ -29,8 +29,8 @@
               <div class="stat-item checkin-wrapper">
                 <el-button 
                   type="primary" 
+                  class="check-button"
                   @click="handleCheckInOut"
-                  class="checkin-button"
                 >
                   {{ statusType === 1 ? '签到' : '签退' }}
                 </el-button>
@@ -225,24 +225,41 @@ const selectedDate = ref(getLocalDateString())
 // 获取签到状态
 const getCheckInStatus = async () => {
   try {
+    const account = userStore.getAccount
+    if (!account) {
+      throw new Error('未获取到用户账号')
+    }
+
     const response = await request.post('/record/queryStatusType', {
       account: account
     })
-    statusType.value = response.data.statusType
+
+    if (response.data.code === '200') {
+      statusType.value = response.data.data.statusType
+      console.log('当前状态:', statusType.value)
+    }
   } catch (error) {
-    console.error('获取签到状态失败:', error)
+    console.error('获取状态失败:', error)
   }
 }
 
 // 签到/签退处理
 const handleCheckInOut = async () => {
-  const url = statusType.value === 1 ? '/record/checkIn' : '/record/checkOut'
   try {
+    const account = userStore.getAccount
+    if (!account) {
+      throw new Error('未获取到用户账号')
+    }
+
+    // 修改判断逻辑
+    const url = statusType.value === 1 ? '/record/checkIn' : '/record/checkOut'
     const response = await request.post(url, {
       account: account
     })
+    
+    // 修改提示消息
     ElMessage.success(statusType.value === 1 ? '签到成功' : '签退成功')
-    statusType.value = statusType.value === 1 ? 0 : 1
+    // 更新状态
     await getCheckInStatus()
   } catch (error) {
     console.error('操作失败:', error)

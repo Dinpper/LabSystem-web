@@ -243,28 +243,61 @@ const handleSearch = async () => {
 // 导出方法
 const handleExport = async () => {
   try {
-    const [startDate, endDate] = searchForm.dateRange || []
+    // 准备请求参数
     const params = {
-      userName: searchForm.userName,
-      groupName: searchForm.groupName,
-      startDate: startDate,
-      endDate: endDate
+      userName: searchForm.userName || '',
+      groupName: searchForm.groupName || ''
     }
     
-    // 创建一个隐藏的 a 标签用于下载
+    if (searchForm.dateRange && searchForm.dateRange.length === 2) {
+      params.startDate = searchForm.dateRange[0]
+      params.endDate = searchForm.dateRange[1]
+    }
+
+    // 发送请求获取文件
+    const response = await fetch('/api/signDuration/download', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params)
+    })
+
+    // 获取文件名
+    const contentDisposition = response.headers.get('content-disposition')
+    const fileName = contentDisposition
+      ? decodeURIComponent(contentDisposition.split("''")[1])
+      : '签到时长统计.xlsx'
+
+    // 获取二进制数据
+    const blob = await response.blob()
+    
+    // 创建下载链接
+    const url = window.URL.createObjectURL(
+      new Blob([blob], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      })
+    )
+    
+    // 创建一个临时链接并点击
     const link = document.createElement('a')
     link.style.display = 'none'
-    link.href = `http://127.0.0.1:8880/signDuration/download?${new URLSearchParams(params)}`
+    link.href = url
+    link.download = fileName
     document.body.appendChild(link)
     link.click()
-    document.body.removeChild(link)
     
+    // 清理
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(link)
+
     ElMessage.success('导出成功')
   } catch (error) {
     console.error('导出失败:', error)
     ElMessage.error('导出失败')
   }
 }
+
 
 // 分页方法
 const handleSizeChange = (val) => {
