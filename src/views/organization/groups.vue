@@ -46,15 +46,28 @@
 
       <!-- 分页 -->
       <div class="pagination">
+        <span>共 {{ total }} 条</span>
+        <el-select v-model="pageSize" class="page-size-select" @change="handleSizeChange">
+          <el-option label="10条/页" :value="10" />
+          <el-option label="20条/页" :value="20" />
+          <el-option label="30条/页" :value="30" />
+          <el-option label="50条/页" :value="50" />
+          <el-option label="100条/页" :value="100" />
+        </el-select>
         <el-pagination
           v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 30, 50]"
-          layout="total, sizes, prev, pager, next, jumper"
+          :page-size="Number(pageSize)"
+          layout="prev, pager, next"
           :total="total"
-          @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
         />
+        <span>前往</span>
+        <el-input
+          v-model="jumpPage"
+          class="jump-page-input"
+          @keyup.enter="handleJumpPage"
+        />
+        <span>页</span>
       </div>
     </el-card>
   </div>
@@ -75,13 +88,14 @@ const tableData = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const jumpPage = ref('')
 
 // 获取小组列表
 const getGroups = async () => {
   try {
     const params = {
       page: currentPage.value,
-      pageSize: pageSize.value,
+      size: pageSize.value,
       name: searchForm.name
     }
     const response = await request.get('/groups/list', { params })
@@ -91,6 +105,7 @@ const getGroups = async () => {
     }
   } catch (error) {
     console.error('获取小组列表失败:', error)
+    ElMessage.error('获取小组列表失败')
   }
 }
 
@@ -124,7 +139,7 @@ const handleMembers = (row) => {
 // 删除小组
 const handleDelete = (row) => {
   ElMessageBox.confirm(
-    `确定要删除 ${row.name} 吗？`,
+    `确定要删除小组 ${row.name} 吗？`,
     '提示',
     {
       confirmButtonText: '确定',
@@ -155,6 +170,16 @@ const handleSizeChange = (val) => {
 const handleCurrentChange = (val) => {
   currentPage.value = val
   getGroups()
+}
+
+// 处理页码跳转
+const handleJumpPage = () => {
+  const page = parseInt(jumpPage.value)
+  if (page && page > 0 && page <= Math.ceil(total.value / pageSize.value)) {
+    currentPage.value = page
+    getGroups()
+  }
+  jumpPage.value = ''
 }
 
 // 组件挂载时获取数据
@@ -190,6 +215,16 @@ onMounted(() => {
 .pagination {
   margin-top: 20px;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.page-size-select {
+  width: 110px;
+}
+
+.jump-page-input {
+  width: 50px;
 }
 </style> 
