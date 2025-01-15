@@ -47,7 +47,7 @@
             align="center"
             :index="indexMethod"
           />
-          <el-table-column prop="name" label="姓名" min-width="100" />
+          <el-table-column prop="userName" label="姓名" min-width="100" />
           <el-table-column prop="groupName" label="小组" min-width="100" />
           <el-table-column prop="reportDate" label="日期" min-width="100" align="center" />
           <el-table-column prop="workContent" label="工作内容" min-width="200" show-overflow-tooltip />

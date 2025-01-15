@@ -8,12 +8,12 @@
             <!-- 左侧头像和基本信息 -->
             <div class="avatar-info">
               <el-avatar :size="100" :src="defaultAvatar" class="user-avatar">
-                {{ userInfo.name?.[0]?.toUpperCase() || 'U' }}
+                {{ userInfo.userName?.[0]?.toUpperCase() || 'U' }}
               </el-avatar>
               <div class="basic-info">
-                <h2 class="user-name">{{ userInfo.name }}</h2>
+                <h2 class="user-name">{{ userInfo.userName }}</h2>
                 <p class="user-id">ID: {{ userInfo.account }}</p>
-                <p class="user-group">第二事业部 · 项目开发部</p>
+                <p class="user-group">{{ userInfo.groupName }}</p>
               </div>
             </div>
             <!-- 右侧统计信息和签到 -->
@@ -203,7 +203,10 @@ const statusType = ref(0)
 const currentDate = ref(new Date())
 const selectedDateTasks = ref([])
 const meetings = ref([])
-const userInfo = ref({})
+const userInfo = ref({
+  userName: '',
+  groupName: ''
+})
 const defaultAvatar = ref('')
 const events = ref({}) // 用于存储日期事件
 
@@ -292,12 +295,18 @@ const handleDateSelect = async (date) => {
 // 获取用户信息
 const getUserInfo = async () => {
   try {
+    const account = userStore.getAccount
     const response = await request.post('/user/queryUserMessage', {
-      account: account
+      account,
+      userName: ''
     })
-    userInfo.value = response.data
+    
+    if (response.data.code === '200') {
+      userInfo.value = response.data.data
+    }
   } catch (error) {
     console.error('获取用户信息失败:', error)
+    ElMessage.error('获取用户信息失败')
   }
 }
 

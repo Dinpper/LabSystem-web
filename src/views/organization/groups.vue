@@ -1,48 +1,48 @@
 <template>
   <div class="groups-container">
     <el-card class="groups-card">
-      <template #header>
-        <div class="card-header">
-          <span class="header-title">小组管理</span>
-          <el-button type="primary" @click="handleAddGroup">
-            添加小组
-          </el-button>
-        </div>
-      </template>
-
-      <!-- 搜索区域 -->
-      <div class="search-area">
-        <el-form :inline="true" :model="searchForm">
-          <el-form-item label="小组名称">
-            <el-input v-model="searchForm.name" placeholder="请输入小组名称" clearable />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="handleSearch">查询</el-button>
-            <el-button @click="resetSearch">重置</el-button>
-          </el-form-item>
-        </el-form>
+      <!-- 工具栏 -->
+      <div class="toolbar">
+        <el-button type="primary" @click="handleAdd">新增小组</el-button>
+        <el-button type="success" @click="handleExport">导出</el-button>
       </div>
 
       <!-- 表格区域 -->
-      <el-table :data="tableData" border style="width: 100%">
-        <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="name" label="小组名称" min-width="150" />
-        <el-table-column prop="memberCount" label="成员数量" width="100" align="center" />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="scope">
-            <el-button link type="primary" @click="handleEdit(scope.row)">
-              编辑
-            </el-button>
-            <el-button link type="primary" @click="handleMembers(scope.row)">
-              成员管理
-            </el-button>
-            <el-button link type="danger" @click="handleDelete(scope.row)">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-container">
+        <el-table 
+          :data="tableData" 
+          border 
+          style="width: 100%"
+          max-height="calc(100vh - 280px)"
+        >
+          <el-table-column type="index" label="序号" width="60" align="center" />
+          <el-table-column prop="groupName" label="小组名称" min-width="150" />
+          <el-table-column prop="leaderName" label="组长" min-width="120" />
+          <el-table-column prop="memberCount" label="成员数量" width="100" align="center" />
+          <el-table-column prop="userList" label="成员列表" min-width="300" show-overflow-tooltip>
+            <template #default="{ row }">
+              {{ row.userList || '暂无成员' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="上报状态" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.reportFlag === 1 ? 'success' : 'danger'">
+                {{ row.reportFlag === 1 ? '上报' : '不上报' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="scope">
+              <el-button link type="primary" @click="handleEdit(scope.row)">
+                编辑
+              </el-button>
+              <el-button link type="danger" @click="handleDelete(scope.row)">
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination">
@@ -70,6 +70,42 @@
         <span>页</span>
       </div>
     </el-card>
+
+    <!-- 新增/编辑对话框 -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="dialogTitle"
+      width="400px"
+    >
+      <el-form 
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-width="80px"
+      >
+        <el-form-item label="组名" prop="groupName">
+          <el-input v-model="form.groupName" placeholder="请输入小组名称" />
+        </el-form-item>
+        <el-form-item label="组长" prop="leaderName">
+          <el-input v-model="form.leaderName" placeholder="请输入组长姓名" />
+        </el-form-item>
+        <el-form-item label="上报状态">
+          <el-switch
+            v-model="form.reportFlag"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="上报"
+            inactive-text="不上报"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSave">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -77,11 +113,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
-// 搜索表单数据
-const searchForm = reactive({
-  name: ''
-})
+const userStore = useUserStore()
 
 // 表格数据
 const tableData = ref([])
@@ -90,18 +124,41 @@ const pageSize = ref(10)
 const total = ref(0)
 const jumpPage = ref('')
 
+// 对话框相关
+const dialogVisible = ref(false)
+const dialogTitle = ref('新增小组')
+const formRef = ref(null)
+
+// 表单数据
+const form = reactive({
+  groupName: '',
+  leaderName: '',
+  reportFlag: 1
+})
+
+// 表单校验规则
+const rules = {
+  groupName: [
+    { required: true, message: '请输入小组名称', trigger: 'blur' }
+  ],
+  leaderName: [
+    { required: true, message: '请输入组长姓名', trigger: 'blur' }
+  ]
+}
+
 // 获取小组列表
 const getGroups = async () => {
   try {
     const params = {
       page: currentPage.value,
       size: pageSize.value,
-      name: searchForm.name
     }
-    const response = await request.get('/groups/list', { params })
+    const response = await request.post('/group/queryGroupsByPage', params)
     if (response.data.code === '200') {
-      tableData.value = response.data.data.list
-      total.value = response.data.data.total
+      tableData.value = response.data.data.grouplist
+      total.value = response.data.data.dataCount
+      currentPage.value = response.data.data.page
+      pageSize.value = response.data.data.size
     }
   } catch (error) {
     console.error('获取小组列表失败:', error)
@@ -109,60 +166,61 @@ const getGroups = async () => {
   }
 }
 
-// 搜索
-const handleSearch = () => {
-  currentPage.value = 1
-  getGroups()
-}
-
-// 重置搜索
-const resetSearch = () => {
-  searchForm.name = ''
-  handleSearch()
-}
-
-// 添加小组
-const handleAddGroup = () => {
-  // TODO: 实现添加小组逻辑
-}
-
-// 编辑小组
-const handleEdit = (row) => {
-  // TODO: 实现编辑小组逻辑
-}
-
-// 管理成员
-const handleMembers = (row) => {
-  // TODO: 实现成员管理逻辑
-}
-
-// 删除小组
-const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除小组 ${row.name} 吗？`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
+// 导出
+const handleExport = async () => {
+  try {
+    const operator = userStore.getAccount
+    if (!operator) {
+      throw new Error('未获取到操作人账号')
     }
-  ).then(async () => {
-    try {
-      const response = await request.delete(`/groups/${row.id}`)
-      if (response.data.code === '200') {
-        ElMessage.success('删除成功')
-        getGroups()
-      }
-    } catch (error) {
-      console.error('删除失败:', error)
-      ElMessage.error('删除失败')
-    }
-  }).catch(() => {})
+
+    const response = await fetch('/api/group/download', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ operator })
+    })
+
+    // 获取文件名
+    const contentDisposition = response.headers.get('content-disposition')
+    const fileName = contentDisposition
+      ? decodeURIComponent(contentDisposition.split("''")[1])
+      : '小组统计.xlsx'
+    
+    // 获取二进制数据
+    const blob = await response.blob()
+    
+    // 创建下载链接
+    const url = window.URL.createObjectURL(
+      new Blob([blob], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      })
+    )
+    
+    // 创建一个临时链接并点击
+    const link = document.createElement('a')
+    link.style.display = 'none'
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    
+    // 清理
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(link)
+
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  }
 }
 
 // 分页大小改变
 const handleSizeChange = (val) => {
   pageSize.value = val
+  currentPage.value = 1
   getGroups()
 }
 
@@ -182,6 +240,98 @@ const handleJumpPage = () => {
   jumpPage.value = ''
 }
 
+// 编辑小组
+const handleEdit = (row) => {
+  // TODO: 等待接口提供后实现
+  ElMessage.info('编辑功能开发中')
+}
+
+// 删除小组
+const handleDelete = (row) => {
+  ElMessageBox.confirm(
+    `确定要删除小组 ${row.groupName} 吗？`,
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    try {
+      const operator = userStore.getAccount
+      if (!operator) {
+        throw new Error('未获取到操作人账号')
+      }
+      
+      const response = await request.post('/group/deleteGroup', {
+        operator,
+        groupName: row.groupName
+      })
+      
+      if (response.data.code === '200') {
+        ElMessage.success('删除成功')
+        getGroups()  // 刷新列表
+      }
+    } catch (error) {
+      console.error('删除失败:', error)
+      ElMessage.error('删除失败：' + error.message)
+    }
+  }).catch(() => {
+    // 取消删除，不做任何操作
+  })
+}
+
+// 新增小组
+const handleAdd = () => {
+  dialogTitle.value = '新增小组'
+  form.groupName = ''
+  form.leaderName = ''
+  form.reportFlag = 1
+  dialogVisible.value = true
+}
+
+// 保存
+const handleSave = async () => {
+  if (!formRef.value) return
+  
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      // 检查必填参数
+      if (!form.groupName.trim()) {
+        ElMessage.warning('请设置组名')
+        return
+      }
+      if (!form.leaderName.trim()) {
+        ElMessage.warning('请设置组长')
+        return
+      }
+
+      try {
+        const operator = userStore.getAccount
+        if (!operator) {
+          throw new Error('未获取到操作人账号')
+        }
+
+        const response = await request.post('/group/addGroup', {
+          operator,
+          groupName: form.groupName.trim(),  // 去除首尾空格
+          leaderName: form.leaderName.trim(),  // 去除首尾空格
+          reportFlag: form.reportFlag
+        })
+
+        if (response.data.code === '200') {
+          ElMessage.success('新增成功')
+          dialogVisible.value = false
+          getGroups()  // 刷新列表
+        }
+      } catch (error) {
+        console.error('新增失败:', error)
+        ElMessage.error('新增失败：' + error.message)
+      }
+    }
+  })
+}
+
 // 组件挂载时获取数据
 onMounted(() => {
   getGroups()
@@ -197,19 +347,31 @@ onMounted(() => {
   min-height: calc(100vh - 100px);
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-title {
-  font-size: 18px;
-  font-weight: 500;
-}
-
-.search-area {
+.toolbar {
   margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* 表格容器样式 */
+.table-container {
+  margin: 0 -20px;
+}
+
+/* 调整表格滚动条样式 */
+:deep(.el-table__body-wrapper::-webkit-scrollbar) {
+  width: 8px;
+  height: 8px;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb) {
+  border-radius: 4px;
+  background-color: #dcdfe6;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-track) {
+  background-color: #ffffff;
 }
 
 .pagination {
@@ -226,5 +388,10 @@ onMounted(() => {
 
 .jump-page-input {
   width: 50px;
+}
+
+/* 对话框样式 */
+:deep(.el-dialog__body) {
+  padding-top: 20px;
 }
 </style> 

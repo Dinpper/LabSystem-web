@@ -8,53 +8,55 @@
           <h1 class="title" :class="{ 'hidden': isCollapse }">实验室管理系统</h1>
         </div>
       </div>
-      <el-menu
-        :default-active="activeMenu"
-        class="sidebar-menu"
-        :collapse="isCollapse"
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
-        router
-      >
-        <template v-for="route in routes">
-          <!-- 没有子菜单的情况 -->
-          <el-menu-item 
-            v-if="!route.children || route.children.length === 1" 
-            :key="route.path"
-            :index="getRouteIndex(route)"
-          >
-            <el-icon>
-              <component :is="route.meta?.icon || route.children?.[0].meta?.icon" />
-            </el-icon>
-            <template #title>{{ route.meta?.title || route.children?.[0].meta?.title }}</template>
-          </el-menu-item>
-
-          <!-- 有子菜单的情况 -->
-          <el-sub-menu 
-            v-else 
-            :key="route.path"
-            :index="route.path"
-          >
-            <template #title>
-              <el-icon>
-                <component :is="route.meta?.icon" />
-              </el-icon>
-              <span>{{ route.meta.title }}</span>
-            </template>
-            <el-menu-item
-              v-for="child in route.children"
-              :key="child.path"
-              :index="route.path + '/' + child.path"
+      <div class="menu-container">
+        <el-menu
+          :default-active="activeMenu"
+          class="sidebar-menu"
+          :collapse="isCollapse"
+          background-color="#304156"
+          text-color="#bfcbd9"
+          active-text-color="#409EFF"
+          router
+        >
+          <template v-for="route in routes">
+            <!-- 没有子菜单的情况 -->
+            <el-menu-item 
+              v-if="!route.children || route.children.length === 1" 
+              :key="route.path"
+              :index="getRouteIndex(route)"
             >
               <el-icon>
-                <component :is="child.meta?.icon" />
+                <component :is="route.meta?.icon || route.children?.[0].meta?.icon" />
               </el-icon>
-              <template #title>{{ child.meta.title }}</template>
+              <template #title>{{ route.meta?.title || route.children?.[0].meta?.title }}</template>
             </el-menu-item>
-          </el-sub-menu>
-        </template>
-      </el-menu>
+
+            <!-- 有子菜单的情况 -->
+            <el-sub-menu 
+              v-else 
+              :key="route.path"
+              :index="route.path"
+            >
+              <template #title>
+                <el-icon>
+                  <component :is="route.meta?.icon" />
+                </el-icon>
+                <span>{{ route.meta.title }}</span>
+              </template>
+              <el-menu-item
+                v-for="child in route.children"
+                :key="child.path"
+                :index="route.path + '/' + child.path"
+              >
+                <el-icon>
+                  <component :is="child.meta?.icon" />
+                </el-icon>
+                <template #title>{{ child.meta.title }}</template>
+              </el-menu-item>
+            </el-sub-menu>
+          </template>
+        </el-menu>
+      </div>
     </div>
 
     <!-- 右侧内容区 -->
@@ -83,7 +85,7 @@
           <el-dropdown trigger="click">
             <div class="avatar-wrapper">
               <el-avatar :size="40" src="https://placeholder.com/40" />
-              <span class="user-name">{{ username }}</span>
+              <span class="user-name">{{ userStore.userName }}</span>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
@@ -98,7 +100,7 @@
       <!-- 主要内容区 -->
       <div class="app-main">
         <router-view v-slot="{ Component }">
-          <keep-alive :include="cachedViews">
+          <keep-alive>
             <component :is="Component" />
           </keep-alive>
         </router-view>
@@ -108,9 +110,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { constantRoutes } from '@/router'
+import { useUserStore } from '@/stores/user'
+import request from '@/utils/request'
 import {
   House,
   Calendar,
@@ -122,13 +126,66 @@ import {
   Edit,
   Files,
   Collection,
-  Grid
+  Grid,
+  AlarmClock,
+  Monitor,
+  DataLine,
+  List
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 const isCollapse = ref(false)
-const username = computed(() => localStorage.getItem('username'))
+
+// 获取用户信息
+const getUserInfo = async () => {
+  try {
+    const account = userStore.getAccount
+    const response = await request.post('/user/queryUserMessage', {
+      account,
+      userName: ''
+    })
+    
+    if (response.data.code === '200') {
+      // 更新 store 中的用户名
+      userStore.userName = response.data.data.userName
+      localStorage.setItem('userName', response.data.data.userName)
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+}
+
+// 访问过的页面标签
+const visitedViews = ref([])
+
+// 缓存的组件名称
+const cachedViews = ref([])
+
+// 初始化标签导航
+const initTags = () => {
+  const currentRoute = route.matched[route.matched.length - 1]
+  if (currentRoute && currentRoute.meta?.title) {
+    visitedViews.value = [{
+      path: currentRoute.path,
+      title: currentRoute.meta.title
+    }]
+    if (currentRoute.name) {
+      cachedViews.value = [currentRoute.name]
+    }
+  } else {
+    // 如果没有匹配到路由，默认显示首页
+    visitedViews.value = [{ path: '/dashboard', title: '首页' }]
+    cachedViews.value = ['Dashboard']
+  }
+}
+
+// 组件挂载时获取用户信息
+onMounted(() => {
+  getUserInfo()
+  initTags()  // 初始化标签导航
+})
 
 // 过滤掉登录页面的路由
 const routes = computed(() => {
@@ -145,14 +202,6 @@ const getRouteIndex = (route) => {
 
 // 当前激活的菜单
 const activeMenu = computed(() => route.path)
-
-// 访问过的页面标签
-const visitedViews = ref([
-  { path: '/dashboard', title: '首页' }
-])
-
-// 缓存的组件名称
-const cachedViews = ref(['Dashboard'])
 
 // 切换侧边栏
 const toggleSideBar = () => {
@@ -174,6 +223,15 @@ const handleTagClose = (tag) => {
   const index = visitedViews.value.findIndex(v => v.path === tag.path)
   visitedViews.value.splice(index, 1)
   
+  // 从缓存中移除组件
+  const name = route.matched[route.matched.length - 1]?.name
+  if (name) {
+    const cacheIndex = cachedViews.value.indexOf(name)
+    if (cacheIndex > -1) {
+      cachedViews.value.splice(cacheIndex, 1)
+    }
+  }
+  
   // 如果关闭的是当前页面，则跳转到最后一个标签
   if (route.path === tag.path) {
     const lastTag = visitedViews.value[visitedViews.value.length - 1]
@@ -190,7 +248,8 @@ router.beforeEach((to, from, next) => {
         path: to.path,
         title: to.meta.title
       })
-      if (to.name) {
+      // 只有不在缓存中的组件才添加到缓存
+      if (to.name && !cachedViews.value.includes(to.name)) {
         cachedViews.value.push(to.name)
       }
     }
@@ -200,8 +259,7 @@ router.beforeEach((to, from, next) => {
 
 // 退出登录
 const handleLogout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('username')
+  userStore.logout()
   router.push('/login')
 }
 
@@ -222,7 +280,11 @@ const icons = {
   Edit,
   Files,
   Collection,
-  Grid
+  Grid,
+  AlarmClock,
+  Monitor,
+  DataLine,
+  List
 }
 </script>
 
@@ -258,6 +320,7 @@ const icons = {
   background-color: #304156;
   border-bottom: 1px solid #1f2d3d;
   width: 100%;
+  flex-shrink: 0;
 }
 
 .logo-content {
@@ -325,7 +388,8 @@ const icons = {
 
 .user-name {
   margin-left: 8px;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .app-main {
@@ -367,5 +431,24 @@ const icons = {
 .el-menu {
   border-right: none !important;
   width: 100%;
+}
+
+.menu-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.menu-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.menu-container::-webkit-scrollbar-thumb {
+  background-color: #41546d;
+  border-radius: 3px;
+}
+
+.menu-container::-webkit-scrollbar-track {
+  background-color: #304156;
 }
 </style> 

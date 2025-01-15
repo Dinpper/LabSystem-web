@@ -6,7 +6,7 @@ export const useUserStore = defineStore('user', {
     console.log('初始化 store state, localStorage account:', localStorage.getItem('account'))
     return {
       token: localStorage.getItem('token') || '',
-      username: localStorage.getItem('username') || '',
+      userName: localStorage.getItem('userName') || '',
       account: localStorage.getItem('account') || ''
     }
   },
@@ -32,10 +32,10 @@ export const useUserStore = defineStore('user', {
           
           const token = response.data.data?.token || 'dummy-token'
           this.token = token
-          this.username = loginForm.account
+          this.userName = response.data.data.userName
           
           localStorage.setItem('token', token)
-          localStorage.setItem('username', loginForm.account)
+          localStorage.setItem('userName', response.data.data.userName)
         }
         return response.data
       } catch (error) {
@@ -46,10 +46,10 @@ export const useUserStore = defineStore('user', {
 
     logout() {
       this.token = ''
-      this.username = ''
+      this.userName = ''
       this.account = ''
       localStorage.removeItem('token')
-      localStorage.removeItem('username')
+      localStorage.removeItem('userName')
       localStorage.removeItem('account')
     }
   }

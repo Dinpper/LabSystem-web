@@ -25,12 +25,26 @@ export const constantRoutes = [
   {
     path: '/checkin',
     component: Layout,
+    name: 'CheckInManage',
+    meta: { title: '签到管理', icon: 'Timer' },
     children: [
       {
-        path: '',
-        name: 'CheckIn',
-        component: () => import('@/views/checkin/index.vue'),
-        meta: { title: '签到时长', icon: 'Timer', requiresAuth: true }
+        path: 'display',
+        name: 'CheckInDisplay',
+        component: () => import('@/views/checkin/display.vue'),
+        meta: { title: '签到显示', icon: 'Monitor', requiresAuth: true }
+      },
+      {
+        path: 'statistics',
+        name: 'CheckInStatistics',
+        component: () => import('@/views/checkin/statistics.vue'),
+        meta: { title: '签到统计', icon: 'DataLine', requiresAuth: true }
+      },
+      {
+        path: 'record',
+        name: 'CheckInRecord',
+        component: () => import('@/views/checkin/record.vue'),
+        meta: { title: '签到记录', icon: 'List', requiresAuth: true }
       }
     ]
   },
@@ -65,7 +79,7 @@ export const constantRoutes = [
         path: 'schedule',
         name: 'MeetingSchedule',
         component: () => import('@/views/meeting/schedule.vue'),
-        meta: { title: '会议发布', requiresAuth: true }
+        meta: { title: '会议发布', icon: 'AlarmClock', requiresAuth: true }
       },
       {
         path: '',

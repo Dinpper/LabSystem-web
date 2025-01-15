@@ -54,7 +54,7 @@
           <el-descriptions-item label="账号">
             <el-tag size="small">{{ userInfo.account }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="姓名">{{ userInfo.name }}</el-descriptions-item>
+          <el-descriptions-item label="小组">{{ userInfo.groupName }}</el-descriptions-item>
           <el-descriptions-item label="性别">
             <el-tag 
               :type="userInfo.sex === 0 ? 'info' : 'danger'"
@@ -130,7 +130,9 @@ import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import { Edit, Phone, Message, Clock } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
 const userInfo = ref({
@@ -164,28 +166,33 @@ const year = ref(new Date().getFullYear())
 const years = [2024, 2025]
 
 const formatDate = (date) => {
-  return date ? dayjs(date).format('YYYY-MM-DD HH:mm:ss') : '-'
+  if (!date || date === '-') return '-'
+  const formattedDate = dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+  return formattedDate === 'Invalid Date' ? '-' : formattedDate
 }
 
 // 获取用户信息
 const getUserInfo = async () => {
   try {
+    const account = userStore.getAccount
     const response = await request.post('/user/queryUserMessage', {
-      account: localStorage.getItem('username')
+      account,
+      userName: ''
     })
     
     if (response.data.code === '200') {
       const userData = response.data.data
       userInfo.value = {
         account: userData.account || '',
-        name: userData.name || '',
+        name: userData.userName || '',
         sex: userData.sex || 0,
         phone: userData.phone || '',
         grade: userData.grade || '',
         email: userData.email || '',
+        groupName: userData.groupName || '',
         stuNumber: userData.stuNumber || '',
         className: userData.className || '',
-        inputDate: userData.inputDate || ''
+        inputDate: userData.inputDate || '-'
       }
       
       // 更新编辑表单的初始值

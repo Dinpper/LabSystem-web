@@ -20,6 +20,7 @@
           <el-form-item>
             <el-button type="primary" @click="handleSearch">查询</el-button>
             <el-button @click="resetSearch">重置</el-button>
+            <el-button type="success" @click="handleExport">导出</el-button>
           </el-form-item>
         </el-form>
       </div>
@@ -319,6 +320,58 @@ const handleSizeChange = (val) => {
 const handleCurrentChange = (val) => {
   currentPage.value = val
   getMembers()
+}
+
+// 导出
+const handleExport = async () => {
+  try {
+    // 准备导出参数
+    const params = {
+      userName: searchForm.userName || '',
+      groupName: searchForm.groupName || ''
+    }
+    
+    const response = await fetch('/api/user/download', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params)
+    })
+
+        // 获取文件名
+    const contentDisposition = response.headers.get('content-disposition')
+    const fileName = contentDisposition
+      ? decodeURIComponent(contentDisposition.split("''")[1])
+      : '用户统计报表.xlsx'
+    
+    // 获取二进制数据
+    const blob = await response.blob()
+
+    // 创建下载链接
+    const url = window.URL.createObjectURL(
+      new Blob([blob], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      })
+    )
+    
+    // 创建一个临时链接并点击
+    const link = document.createElement('a')
+    link.style.display = 'none'
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    
+    // 清理
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(link)
+
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  }
 }
 
 // 组件挂载时获取数据
