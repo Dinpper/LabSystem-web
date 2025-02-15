@@ -386,10 +386,10 @@ onMounted(() => {
   meetings.value = [
     {
       id: 1,
-      time: '今天 14:00',
-      location: '华南工程大酒店3楼',
-      content: '网络协同办公系统升级改造培训会议',
-      members: '张三、李四、王五等'
+      time: '',
+      location: '',
+      content: '',
+      members: ''
     }
   ]
   

@@ -107,10 +107,15 @@
                   'available': isTimeSlotAvailable(day.date, time),
                   'selected': isTimeSlotSelected(day.date, time)
                 }"
-                @click="handleTimeSlotClick(day.date, time)"
+                @click.prevent="handleTimeSlotClick(day.date, time)"
               >
-                <span v-if="isTimeSlotAvailable(day.date, time)" class="available-count">
-                  {{ getAvailableCount(day.date, time) }}人可用
+                <span v-if="getTimeSlotInfo(day.date, time)?.courses?.length > 0" class="course-info">
+                  <div v-for="(course, index) in getTimeSlotInfo(day.date, time).courses" 
+                       :key="index" 
+                       class="course-item"
+                  >
+                    {{ course }}
+                  </div>
                 </span>
               </div>
             </div>
@@ -274,7 +279,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Check, Close, Plus, Timer } from '@element-plus/icons-vue'
 import request from '@/utils/request'
@@ -302,20 +307,20 @@ const dialogVisible = ref(false)
 // 可用时间数据
 const availableTimeData = ref([])
 
-// 时间槽列表
+// 修改时间槽列表
 const timeSlots = [
-  '08:05-08:50', // 第1节
-  '08:50-09:35', // 第2节
-  '09:45-10:30', // 第3节
-  '10:35-11:20', // 第4节
-  '11:25-12:10', // 第5节
-  '13:20-14:05', // 第6节
-  '14:10-14:55', // 第7节
-  '15:05-15:50', // 第8节
-  '15:55-16:40', // 第9节
-  '18:00-18:45', // 第10节
-  '18:50-19:35', // 第11节
-  '19:40-20:25'  // 第12节
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  '10',
+  '11',
+  '12'
 ]
 
 // 新增的响应式数据
@@ -392,22 +397,29 @@ const getUserList = async () => {
   }
 }
 
-// 获取可用时间数据
-const fetchAvailableTimeSlots = async () => {
-  try {
-    const response = await request.post('/meeting/available-slots', {
-      startDate: formatDate(currentWeekStart.value),
-      endDate: formatDate(new Date(currentWeekStart.value.getTime() + 6 * 24 * 60 * 60 * 1000)),
-      participants: formData.participants
-    })
-    
-    if (response.data.code === '200') {
-      availableTimeData.value = response.data.data
-    }
-  } catch (error) {
-    console.error('获取可用时间段失败:', error)
-    ElMessage.error('获取可用时间段失败')
+// 将时间槽序号转换为课程字段名
+const getTimeSlotKey = (slot) => {
+  const numMap = {
+    '1': 'First',
+    '2': 'Second',
+    '3': 'Third',
+    '4': 'Fourth',
+    '5': 'Fifth',
+    '6': 'Sixth',
+    '7': 'Seventh',
+    '8': 'Eighth',
+    '9': 'Ninth',
+    '10': 'Tenth',
+    '11': 'Eleventh',
+    '12': 'Twelfth'
   }
+  return numMap[slot]
+}
+
+// 获取星期几（1-5）
+const getWeekDay = (dateStr) => {
+  const date = new Date(dateStr)
+  return date.getDay()
 }
 
 // 检查时间槽是否可用
@@ -441,10 +453,60 @@ const handleTimeSlotClick = (date, time) => {
 }
 
 // 处理参会人员变更
-const handleParticipantsChange = () => {
+const handleParticipantsChange = async () => {
   selectedSlot.value = null
   if (formData.participants.length > 0) {
-    fetchAvailableTimeSlots()
+    // 获取选中用户的名字列表
+    const userNames = formData.participants.map(userId => {
+      const user = userOptions.value.find(u => u.value === userId)
+      return user ? user.label : ''
+    }).filter(name => name)
+
+    try {
+      // 获取课表数据
+      const response = await request.post('/course/queryCourseByUserList', {
+        list: userNames
+      })
+      
+      if (response.data.code === '200') {
+        const courseData = response.data.data
+        if (!courseData || courseData.length === 0) {
+          ElMessage.warning('所选人员暂无课程数据')
+          return
+        }
+        // 初始化时间槽可用状态
+        availableTimeData.value = weekDays.value.map(day => {
+          return timeSlots.map(slot => {
+            // 查找该天该时间段是否有课
+            const dayCourses = courseData.filter(course => {
+              // 将星期几转换为数字 (1-5)
+              const dayOfWeek = ['周一', '周二', '周三', '周四', '周五'].indexOf(day.dayOfWeek) + 1
+              return course.week === dayOfWeek
+            })
+            const hasCourse = dayCourses.some(course => {
+              const courseKey = `course${getTimeSlotKey(slot)}`
+              // 如果有课程，显示课程名称
+              const courseName = course[courseKey]
+              return courseName && courseName.trim() !== ''
+            })
+            return {
+              available: !hasCourse,
+              count: userNames.length - (hasCourse ? 1 : 0),
+              // 添加课程信息
+              courses: dayCourses.map(course => {
+                const courseKey = `course${getTimeSlotKey(slot)}`
+                return course[courseKey]
+              }).filter(name => name && name.trim() !== '')
+            }
+          })
+        })
+      }
+    } catch (error) {
+      console.error('获取课表失败:', error)
+      ElMessage.error('获取课表失败')
+    }
+  } else {
+    availableTimeData.value = []
   }
 }
 
@@ -453,7 +515,6 @@ const prevWeek = () => {
   const date = new Date(currentWeekStart.value)
   date.setDate(date.getDate() - 7)
   currentWeekStart.value = date
-  fetchAvailableTimeSlots()
 }
 
 // 下一周
@@ -461,7 +522,6 @@ const nextWeek = () => {
   const date = new Date(currentWeekStart.value)
   date.setDate(date.getDate() + 7)
   currentWeekStart.value = date
-  fetchAvailableTimeSlots()
 }
 
 // 处理发布按钮点击
@@ -569,7 +629,7 @@ const showParticipantDialog = () => {
 const confirmParticipants = () => {
   formData.participants = [...tempSelectedUsers.value]
   participantDialogVisible.value = false
-  handleParticipantsChange()
+  handleParticipantsChange() // 只在这里调用一次
 }
 
 // 组件挂载时获取数据
@@ -632,6 +692,15 @@ const scrollToTimeTable = () => {
   if (timeTable) {
     timeTable.scrollIntoView({ behavior: 'smooth' })
   }
+}
+
+// 获取时间槽信息
+const getTimeSlotInfo = (date, time) => {
+  const dayIndex = weekDays.value.findIndex(day => day.date === date)
+  const timeIndex = timeSlots.indexOf(time)
+  if (dayIndex === -1 || timeIndex === -1) return null
+  
+  return availableTimeData.value?.[dayIndex]?.[timeIndex]
 }
 </script>
 
@@ -723,31 +792,52 @@ const scrollToTimeTable = () => {
 }
 
 .time-cell {
-  height: 60px;
+  height: 50px;
   padding: 4px;
   font-size: 11px;
-  text-align: center;
-  white-space: nowrap;
-  border-bottom: 1px solid #dcdfe6;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: not-allowed;
-  background-color: #f5f5f5;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  cursor: pointer;
+  transition: all 0.3s;
+  overflow: hidden;
+  overflow-y: auto;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.course-info {
+  font-size: 10px;
+  color: #666;
+  text-align: center;
+  line-height: 1.2;
+  width: 100%;
+}
+
+.course-item {
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--el-border-color-lighter);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-item:last-child {
+  border-bottom: none;
 }
 
 .time-cell.available {
-  background-color: #f0f9eb;
-  cursor: pointer;
+  background-color: var(--el-color-success-light-9);
 }
 
 .time-cell.available:hover {
-  background-color: #e1f3d8;
+  background-color: var(--el-color-success-light-8);
 }
 
 .time-cell.selected {
-  background-color: #409eff;
-  color: white;
+  background-color: var(--el-color-primary-light-8);
+  color: var(--el-color-primary);
 }
 
 .available-count {
@@ -1055,7 +1145,7 @@ const scrollToTimeTable = () => {
 }
 
 .time-cell {
-  height: 60px;
+  height: 50px;
   padding: 4px;
   font-size: 11px;
   display: flex;
@@ -1064,6 +1154,10 @@ const scrollToTimeTable = () => {
   border-bottom: 1px solid var(--el-border-color-lighter);
   cursor: pointer;
   transition: all 0.3s;
+  overflow: hidden;
+  overflow-y: auto;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .time-cell.available {
@@ -1077,5 +1171,31 @@ const scrollToTimeTable = () => {
 .time-cell.selected {
   background-color: var(--el-color-primary-light-8);
   color: var(--el-color-primary);
+}
+
+.course-info {
+  font-size: 10px;
+  color: #666;
+  text-align: center;
+  line-height: 1.2;
+  width: 100%;
+}
+
+.course-info small {
+  color: #999;
+}
+
+/* 自定义滚动条样式 */
+.time-cell::-webkit-scrollbar {
+  width: 4px;
+}
+
+.time-cell::-webkit-scrollbar-thumb {
+  background-color: var(--el-border-color-lighter);
+  border-radius: 2px;
+}
+
+.time-cell::-webkit-scrollbar-track {
+  background-color: transparent;
 }
 </style> 
