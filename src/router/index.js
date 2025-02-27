@@ -123,6 +123,26 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/achievement',
+    component: Layout,
+    name: 'Achievement',
+    meta: { title: '成果管理', icon: 'Medal' },
+    children: [
+      {
+        path: 'study',
+        name: 'Study',
+        component: () => import('@/views/achievement/study.vue'),
+        meta: { title: '学习收获', icon: 'Reading' }
+      },
+      {
+        path: 'award',
+        name: 'Award',
+        component: () => import('@/views/achievement/award.vue'),
+        meta: { title: '获奖情况', icon: 'Trophy' }
+      }
+    ]
+  },
+  {
     path: '/organization',
     component: Layout,
     name: 'Organization',

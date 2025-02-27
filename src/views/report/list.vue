@@ -53,6 +53,23 @@
           <el-table-column prop="workContent" label="工作内容" min-width="200" show-overflow-tooltip />
           <el-table-column prop="problems" label="遇到问题" min-width="200" show-overflow-tooltip />
           <el-table-column prop="plan" label="计划" min-width="200" show-overflow-tooltip />
+          <el-table-column label="附件" min-width="200">
+            <template #default="{ row }">
+              <div v-if="row.achievement" class="file-list">
+                <el-tag
+                  v-for="file in row.achievement.split('; ').filter(Boolean)"
+                  :key="file"
+                  size="small"
+                  type="info"
+                  class="file-tag"
+                >
+                  <el-icon><Document /></el-icon>
+                  <span class="file-name">{{ file }}</span>
+                </el-tag>
+              </div>
+              <span v-else class="no-files">无附件</span>
+            </template>
+          </el-table-column>
         </el-table>
 
         <!-- 分页 -->
@@ -90,6 +107,7 @@ import { ref, reactive, onMounted } from 'vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
+import { Document } from '@element-plus/icons-vue'
 
 // 搜索表单数据
 const searchForm = reactive({
@@ -317,5 +335,41 @@ onMounted(() => {
 
 :deep(.el-input__inner:focus) {
   background-color: #fff;
+}
+
+.file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.file-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  max-width: 200px;
+}
+
+.file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.no-files {
+  color: #909399;
+  font-size: 13px;
+}
+
+:deep(.el-tag) {
+  border-radius: 4px;
+  background-color: #f4f4f5;
+  border-color: #e9e9eb;
+  color: #606266;
+}
+
+:deep(.el-tag .el-icon) {
+  font-size: 14px;
 }
 </style> 

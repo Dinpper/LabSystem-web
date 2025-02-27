@@ -5,7 +5,12 @@
         <!-- 左侧发布会议表单 -->
         <div class="meeting-form-section">
           <h3 class="section-title">发布会议</h3>
-          <el-form :model="meetingForm" label-width="80px">
+          <el-form 
+            ref="meetingFormRef"
+            :model="meetingForm" 
+            :rules="meetingRules"
+            label-width="80px"
+          >
             <el-form-item label="主题" required>
               <el-input v-model="meetingForm.title" placeholder="请输入会议主题"/>
             </el-form-item>
@@ -44,21 +49,15 @@
             </el-form-item>
 
             <el-form-item label="会议时间" required>
-              <div v-if="selectedSlot" class="selected-time-display">
-                {{ formatDate(selectedSlot.date) }} {{ selectedSlot.time }}
-                <el-button link type="primary" @click="selectedSlot = null">
-                  重新选择
-                </el-button>
-              </div>
-              <el-button 
-                v-else 
-                link 
-                type="primary"
-                @click="scrollToTimeTable"
-              >
-                <el-icon><Timer /></el-icon>
-                从右侧课表选择时间
-              </el-button>
+              <el-date-picker
+                v-model="meetingForm.meetingTime"
+                type="datetime"
+                placeholder="请选择会议时间"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DD HH:mm"
+                :disabled-date="disabledDate"
+                :disabled-hours="disabledHours"
+              />
             </el-form-item>
 
             <el-form-item label="会议内容" required>
@@ -73,8 +72,8 @@
             <el-form-item>
               <el-button 
                 type="primary" 
-                @click="handlePublish"
-                :disabled="!canPublish"
+                @click="submitMeeting"
+                :loading="loading"
               >
                 发布会议
               </el-button>
@@ -89,8 +88,8 @@
             <!-- 时间列 -->
             <div class="time-column">
               <div class="time-header">时间</div>
-              <div class="time-slot" v-for="time in timeSlots" :key="time">
-                {{ time }}
+              <div class="time-slot" v-for="(time, index) in timeSlots" :key="time">
+                {{ index + 1 }}
               </div>
             </div>
             
@@ -100,7 +99,7 @@
                 {{ day.dayOfWeek }}
               </div>
               <div
-                v-for="time in timeSlots"
+                v-for="(time, index) in timeSlots"
                 :key="time"
                 class="time-cell"
                 :class="{
@@ -110,8 +109,8 @@
                 @click.prevent="handleTimeSlotClick(day.date, time)"
               >
                 <span v-if="getTimeSlotInfo(day.date, time)?.courses?.length > 0" class="course-info">
-                  <div v-for="(course, index) in getTimeSlotInfo(day.date, time).courses" 
-                       :key="index" 
+                  <div v-for="course in getTimeSlotInfo(day.date, time).courses" 
+                       :key="course" 
                        class="course-item"
                   >
                     {{ course }}
@@ -283,6 +282,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Check, Close, Plus, Timer } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import dayjs from 'dayjs'
 
 // 表单数据
 const formData = reactive({
@@ -308,7 +308,7 @@ const dialogVisible = ref(false)
 const availableTimeData = ref([])
 
 // 修改时间槽列表
-const timeSlots = [
+const timeSlots = ref([
   '1',
   '2',
   '3',
@@ -321,7 +321,7 @@ const timeSlots = [
   '10',
   '11',
   '12'
-]
+])
 
 // 新增的响应式数据
 const participantDialogVisible = ref(false)
@@ -397,23 +397,20 @@ const getUserList = async () => {
   }
 }
 
-// 将时间槽序号转换为课程字段名
-const getTimeSlotKey = (slot) => {
-  const numMap = {
-    '1': 'First',
-    '2': 'Second',
-    '3': 'Third',
-    '4': 'Fourth',
-    '5': 'Fifth',
-    '6': 'Sixth',
-    '7': 'Seventh',
-    '8': 'Eighth',
-    '9': 'Ninth',
-    '10': 'Tenth',
-    '11': 'Eleventh',
-    '12': 'Twelfth'
-  }
-  return numMap[slot]
+// 修改时间槽映射
+const timeSlotMap = {
+  1: 'courseFirst',
+  2: 'courseSecond',
+  3: 'courseThird',
+  4: 'courseFourth',
+  5: 'courseFifth',
+  6: 'courseSixth',
+  7: 'courseSeventh',
+  8: 'courseEighth',
+  9: 'courseNinth',
+  10: 'courseTenth',
+  11: 'courseEleventh',
+  12: 'courseTwelfth'
 }
 
 // 获取星期几（1-5）
@@ -424,10 +421,8 @@ const getWeekDay = (dateStr) => {
 
 // 检查时间槽是否可用
 const isTimeSlotAvailable = (date, time) => {
-  const slot = availableTimeData.value.find(
-    s => s.date === date && s.time === time
-  )
-  return slot && slot.availableCount > 0
+  const info = getTimeSlotInfo(date, time)
+  return !info || info.courses.length === 0
 }
 
 // 获取可用人数
@@ -449,6 +444,9 @@ const isTimeSlotSelected = (date, time) => {
 const handleTimeSlotClick = (date, time) => {
   if (isTimeSlotAvailable(date, time)) {
     selectedSlot.value = { date, time }
+    // 将选中的时间同步到 meetingForm
+    const timeStr = `${time}:00`  // 假设每节课开始于整点
+    meetingForm.meetingTime = `${date} ${timeStr}`
   }
 }
 
@@ -476,29 +474,26 @@ const handleParticipantsChange = async () => {
         }
         // 初始化时间槽可用状态
         availableTimeData.value = weekDays.value.map(day => {
-          return timeSlots.map(slot => {
-            // 查找该天该时间段是否有课
-            const dayCourses = courseData.filter(course => {
-              // 将星期几转换为数字 (1-5)
-              const dayOfWeek = ['周一', '周二', '周三', '周四', '周五'].indexOf(day.dayOfWeek) + 1
-              return course.week === dayOfWeek
-            })
-            const hasCourse = dayCourses.some(course => {
-              const courseKey = `course${getTimeSlotKey(slot)}`
-              // 如果有课程，显示课程名称
-              const courseName = course[courseKey]
-              return courseName && courseName.trim() !== ''
-            })
-            return {
-              available: !hasCourse,
-              count: userNames.length - (hasCourse ? 1 : 0),
-              // 添加课程信息
-              courses: dayCourses.map(course => {
-                const courseKey = `course${getTimeSlotKey(slot)}`
-                return course[courseKey]
-              }).filter(name => name && name.trim() !== '')
-            }
-          })
+          const dayOfWeek = ['周一', '周二', '周三', '周四', '周五'].indexOf(day.dayOfWeek) + 1
+          const dayCourses = courseData.filter(course => course.week === dayOfWeek)
+          
+          return {
+            date: day.date,
+            courses: dayCourses.reduce((acc, course) => {
+              // 遍历每个时间段
+              for (let i = 1; i <= 12; i++) {
+                const courseKey = timeSlotMap[i]
+                if (course[courseKey] && course[courseKey].trim() !== '') {
+                  if (!acc[courseKey]) {
+                    acc[courseKey] = []
+                  }
+                  acc[courseKey].push(course[courseKey])
+                }
+              }
+              return acc
+            }, {}),
+            available: true
+          }
         })
       }
     } catch (error) {
@@ -524,44 +519,63 @@ const nextWeek = () => {
   currentWeekStart.value = date
 }
 
-// 处理发布按钮点击
-const handlePublish = () => {
-  meetingForm.title = ''
-  meetingForm.location = ''
-  meetingForm.description = ''
-  dialogVisible.value = true
-}
+// 新的提交方法
+const submitMeeting = async () => {
+  if (!meetingFormRef.value) return
+  
+  await meetingFormRef.value.validate(async (valid) => {
+    if (valid) {
+      if (!meetingForm.meetingTime) {
+        ElMessage.warning('请选择会议时间')
+        return
+      }
+      
+      if (formData.participants.length === 0) {
+        ElMessage.warning('请选择参会人员')
+        return
+      }
+      
+      loading.value = true
+      try {
+        // 获取选中用户的名字列表
+        const memberList = formData.participants.map(userId => {
+          const user = userOptions.value.find(u => u.value === userId)
+          return user ? user.label : ''
+        }).filter(Boolean)
 
-// 确认发布会议
-const confirmPublish = async () => {
-  if (!meetingForm.title.trim()) {
-    ElMessage.warning('请输入会议主题')
-    return
-  }
+        // 格式化开始时间
+        const startTime = meetingForm.meetingTime
+          ? dayjs(meetingForm.meetingTime).format('YYYY-MM-DD HH:mm:ss')
+          : ''
 
-  try {
-    const response = await request.post('/meeting/schedule', {
-      title: meetingForm.title,
-      location: meetingForm.location,
-      description: meetingForm.description,
-      date: selectedSlot.value.date,
-      time: selectedSlot.value.time,
-      participants: formData.participants
-    })
-    
-    if (response.data.code === '200') {
-      ElMessage.success('会议发布成功')
-      dialogVisible.value = false
-      // 重置数据
-      selectedSlot.value = null
-      meetingForm.title = ''
-      meetingForm.location = ''
-      meetingForm.description = ''
+        const response = await request.post('/meeting/addMeeting', {
+          meetingName: meetingForm.title,
+          description: meetingForm.description,
+          startTime: startTime,
+          location: meetingForm.location,
+          memberList: memberList,
+          organizerAccount: localStorage.getItem('account')
+        })
+        
+        if (response.data.code === '200') {
+          ElMessage.success('会议发布成功')
+          // 重置表单
+          meetingForm.title = ''
+          meetingForm.location = ''
+          meetingForm.description = ''
+          meetingForm.meetingTime = ''
+          formData.participants = []
+          selectedSlot.value = null
+          meetingFormRef.value.resetFields()
+        }
+      } catch (error) {
+        console.error('发布会议失败:', error)
+        ElMessage.error('发布会议失败')
+      } finally {
+        loading.value = false
+      }
     }
-  } catch (error) {
-    console.error('发布会议失败:', error)
-    ElMessage.error('发布会议失败')
-  }
+  })
 }
 
 // 格式化日期
@@ -696,12 +710,47 @@ const scrollToTimeTable = () => {
 
 // 获取时间槽信息
 const getTimeSlotInfo = (date, time) => {
-  const dayIndex = weekDays.value.findIndex(day => day.date === date)
-  const timeIndex = timeSlots.indexOf(time)
-  if (dayIndex === -1 || timeIndex === -1) return null
+  const daySchedule = availableTimeData.value.find(day => day.date === date)
+  if (!daySchedule) return null
   
-  return availableTimeData.value?.[dayIndex]?.[timeIndex]
+  const timeIndex = parseInt(time)
+  const courseKey = timeSlotMap[timeIndex]
+  
+  return {
+    courses: daySchedule.courses[courseKey] || []
+  }
 }
+
+// 禁用的日期（可选）
+const disabledDate = (date) => {
+  return date.getTime() < Date.now() - 8.64e7 // 禁用过去的日期
+}
+
+// 禁用的小时（根据需要设置）
+const disabledHours = () => {
+  return [0, 1, 2, 3, 4, 5, 6, 7, 20, 21, 22, 23] // 禁用非工作时间
+}
+
+const meetingFormRef = ref(null)
+const loading = ref(false)
+
+// 表单验证规则
+const meetingRules = {
+  title: [{ required: true, message: '请输入会议主题', trigger: 'blur' }],
+  location: [{ required: true, message: '请输入会议地点', trigger: 'blur' }],
+  description: [{ required: true, message: '请输入会议说明', trigger: 'blur' }]
+}
+
+// 在日期选择器变更时同步到课表选中状态
+watch(() => meetingForm.meetingTime, (newVal) => {
+  if (newVal) {
+    const [date, time] = newVal.split(' ')
+    const hour = time.split(':')[0]
+    selectedSlot.value = { date, time: hour }
+  } else {
+    selectedSlot.value = null
+  }
+})
 </script>
 
 <style scoped>
@@ -750,12 +799,14 @@ const getTimeSlotInfo = (date, time) => {
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
 }
 
 .time-column {
   width: 85px;
   flex-shrink: 0;
   border-right: 1px solid #dcdfe6;
+  background-color: #f5f7fa;
 }
 
 .day-column {
@@ -780,21 +831,27 @@ const getTimeSlotInfo = (date, time) => {
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
+  background-color: #f5f7fa;
+  font-weight: 500;
+  color: #606266;
+  border-bottom: 1px solid #dcdfe6;
 }
 
 .time-slot {
-  height: 60px;
-  padding: 4px;
-  border-bottom: 1px solid #dcdfe6;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: 500;
+  color: #606266;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background-color: #f5f7fa;
 }
 
 .time-cell {
   height: 50px;
   padding: 4px;
-  font-size: 11px;
+  font-size: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -803,8 +860,7 @@ const getTimeSlotInfo = (date, time) => {
   transition: all 0.3s;
   overflow: hidden;
   overflow-y: auto;
-  text-overflow: ellipsis;
-  text-align: center;
+  background-color: #fff;
 }
 
 .course-info {
@@ -813,31 +869,33 @@ const getTimeSlotInfo = (date, time) => {
   text-align: center;
   line-height: 1.2;
   width: 100%;
+  padding: 2px;
 }
 
 .course-item {
-  padding: 2px 0;
-  border-bottom: 1px dashed var(--el-border-color-lighter);
+  padding: 2px 4px;
+  margin: 2px 0;
+  background-color: #f5f7fa;
+  border-radius: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.course-item:last-child {
-  border-bottom: none;
+  font-size: 11px;
+  color: #606266;
 }
 
 .time-cell.available {
-  background-color: var(--el-color-success-light-9);
+  background-color: #f0f9eb;
 }
 
 .time-cell.available:hover {
-  background-color: var(--el-color-success-light-8);
+  background-color: #e1f3d8;
 }
 
 .time-cell.selected {
-  background-color: var(--el-color-primary-light-8);
+  background-color: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
+  font-weight: 500;
 }
 
 .available-count {
@@ -1197,5 +1255,15 @@ const getTimeSlotInfo = (date, time) => {
 
 .time-cell::-webkit-scrollbar-track {
   background-color: transparent;
+}
+
+/* 添加悬停效果 */
+.time-cell:hover {
+  box-shadow: inset 0 0 0 1px var(--el-border-color);
+}
+
+/* 添加课程项目悬停效果 */
+.course-item:hover {
+  background-color: #ebeef5;
 }
 </style> 

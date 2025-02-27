@@ -42,7 +42,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="location" label="地点" width="120" align="center" />
-          <el-table-column prop="membersList" label="参会人员" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="membersName" label="参会人员" min-width="200" show-overflow-tooltip />
           <el-table-column prop="description" label="会议内容" min-width="200" show-overflow-tooltip />
         </el-table>
       </div>
