@@ -7,7 +7,8 @@ export const useUserStore = defineStore('user', {
     return {
       token: localStorage.getItem('token') || '',
       userName: localStorage.getItem('userName') || '',
-      account: localStorage.getItem('account') || ''
+      account: localStorage.getItem('account') || '',
+      role: localStorage.getItem('userRole') || ''
     }
   },
 
@@ -23,23 +24,31 @@ export const useUserStore = defineStore('user', {
     async login(loginForm) {
       try {
         console.log('开始登录，账号:', loginForm.account)
-        const response = await axios.post('/api/login/loginIn', loginForm)
+        const response = await axios({
+          method: 'post',
+          url: '/api/login/loginIn',
+          data: loginForm,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
         
         if (response.data.code === '200') {
+          const { userName, role } = response.data.data
+          
+          this.userName = userName
           this.account = loginForm.account
+          this.role = role
+          
+          localStorage.setItem('userName', userName)
           localStorage.setItem('account', loginForm.account)
+          localStorage.setItem('userRole', role)
+          
           console.log('登录成功，保存账号:', this.account)
-          
-          const token = response.data.data?.token || 'dummy-token'
-          this.token = token
-          this.userName = response.data.data.userName
-          
-          localStorage.setItem('token', token)
-          localStorage.setItem('userName', response.data.data.userName)
         }
         return response.data
       } catch (error) {
-        console.error('Login error in store:', error)
+        console.error('登录失败:', error)
         throw error
       }
     },
@@ -48,9 +57,11 @@ export const useUserStore = defineStore('user', {
       this.token = ''
       this.userName = ''
       this.account = ''
+      this.role = ''
       localStorage.removeItem('token')
       localStorage.removeItem('userName')
       localStorage.removeItem('account')
+      localStorage.removeItem('userRole')
     }
   }
 }) 

@@ -18,7 +18,7 @@
           active-text-color="#409EFF"
           router
         >
-          <template v-for="route in routes">
+          <template v-for="route in filteredRoutes">
             <!-- 没有子菜单的情况 -->
             <el-menu-item 
               v-if="!route.children || route.children.length === 1" 
@@ -187,9 +187,20 @@ onMounted(() => {
   initTags()  // 初始化标签导航
 })
 
-// 过滤掉登录页面的路由
-const routes = computed(() => {
-  return constantRoutes.filter(route => route.path !== '/login')
+// 根据角色过滤路由
+const filteredRoutes = computed(() => {
+  const userRole = localStorage.getItem('userRole')
+  return constantRoutes.filter(route => {
+    // 排除登录路由
+    if (route.path === '/login') {
+      return false
+    }
+    // 检查是否有权限访问
+    if (route.meta && route.meta.roles) {
+      return route.meta.roles.includes(userRole)
+    }
+    return true
+  })
 })
 
 // 获取路由索引

@@ -12,6 +12,7 @@ const service = axios.create({
 // 请求拦截器
 service.interceptors.request.use(
   config => {
+    console.log('发送请求:', config.url, config.data)
     const token = localStorage.getItem('token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
@@ -19,7 +20,7 @@ service.interceptors.request.use(
     return config
   },
   error => {
-    console.error('Request error:', error)
+    console.error('请求错误:', error)
     return Promise.reject(error)
   }
 )
@@ -27,17 +28,16 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   response => {
-    // 判断响应的状态
+    console.log('响应数据:', response.data)
     if (response.data.code === '200') {
       return response
     } else {
-      // 非 200 状态码，抛出错误
       ElMessage.error(response.data.message || '操作失败')
       return Promise.reject(new Error(response.data.message || '操作失败'))
     }
   },
   error => {
-    console.error('响应错误:', error)
+    console.error('响应错误:', error.response || error)
     ElMessage.error(error.message || '请求失败')
     return Promise.reject(error)
   }
