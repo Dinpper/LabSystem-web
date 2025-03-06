@@ -130,7 +130,9 @@ import {
   AlarmClock,
   Monitor,
   DataLine,
-  List
+  List,
+  Setting,
+  TrendCharts
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -295,7 +297,9 @@ const icons = {
   AlarmClock,
   Monitor,
   DataLine,
-  List
+  List,
+  Setting,
+  TrendCharts
 }
 </script>
 

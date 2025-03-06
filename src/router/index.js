@@ -45,6 +45,12 @@ export const constantRoutes = [
         meta: { title: '签到显示', icon: 'Monitor', requiresAuth: true, roles: ['allLeader', 'user'] }
       },
       {
+        path: 'chart',
+        name: 'CheckInChart',
+        component: () => import('@/views/checkin/chart.vue'),
+        meta: { title: '图表显示', icon: 'TrendCharts', requiresAuth: true, roles: ['allLeader', 'user'] }
+      },
+      {
         path: 'statistics',
         name: 'CheckInStatistics',
         component: () => import('@/views/checkin/statistics.vue'),
@@ -111,27 +117,27 @@ export const constantRoutes = [
       }
     ]
   },
-  {
-    path: '/project',
-    component: Layout,
-    redirect: '/project/my',
-    name: 'Project',
-    meta: { title: '项目管理', icon: 'Folder', roles: ['allLeader', 'user'] },
-    children: [
-      {
-        path: 'my',
-        name: 'MyProjects',
-        component: () => import('@/views/project/my.vue'),
-        meta: { title: '相关项目', icon: 'Collection', requiresAuth: true, roles: ['allLeader', 'user'] }
-      },
-      {
-        path: 'all',
-        name: 'AllProjects',
-        component: () => import('@/views/project/all.vue'),
-        meta: { title: '全部项目', icon: 'Grid', requiresAuth: true, roles: ['allLeader', 'user'] }
-      }
-    ]
-  },
+  // {
+  //   path: '/project',
+  //   component: Layout,
+  //   redirect: '/project/my',
+  //   name: 'Project',
+  //   meta: { title: '项目管理', icon: 'Folder', roles: ['allLeader', 'user'] },
+  //   children: [
+  //     {
+  //       path: 'my',
+  //       name: 'MyProjects',
+  //       component: () => import('@/views/project/my.vue'),
+  //       meta: { title: '相关项目', icon: 'Collection', requiresAuth: true, roles: ['allLeader', 'user'] }
+  //     },
+  //     {
+  //       path: 'all',
+  //       name: 'AllProjects',
+  //       component: () => import('@/views/project/all.vue'),
+  //       meta: { title: '全部项目', icon: 'Grid', requiresAuth: true, roles: ['allLeader', 'user'] }
+  //     }
+  //   ]
+  // },
   {
     path: '/achievement',
     component: Layout,
@@ -142,7 +148,7 @@ export const constantRoutes = [
         path: 'study',
         name: 'Study',
         component: () => import('@/views/achievement/study.vue'),
-        meta: { title: '学习收获', icon: 'Reading', roles: ['allLeader', 'user'] }
+        meta: { title: '文件管理', icon: 'Reading', roles: ['allLeader', 'user'] }
       },
       {
         path: 'award',
@@ -159,8 +165,7 @@ export const constantRoutes = [
     meta: { 
       title: '组织管理', 
       icon: 'Operation',
-      roles: ['allLeader'],
-      roles: ['allLeader', 'user']
+      roles: ['allLeader']
     },
     children: [
       {
@@ -171,7 +176,7 @@ export const constantRoutes = [
           title: '人员管理', 
           icon: 'User', 
           requiresAuth: true,
-          roles: ['allLeader', 'user']
+          roles: ['allLeader']
         }
       },
       {
@@ -182,7 +187,24 @@ export const constantRoutes = [
           title: '小组管理', 
           icon: 'UserFilled', 
           requiresAuth: true,
-          roles: ['allLeader', 'user']
+          roles: ['allLeader']
+        }
+      }
+    ]
+  },
+  {
+    path: '/system',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'SystemConfig',
+        component: () => import('@/views/system/index.vue'),
+        meta: { 
+          title: '系统配置', 
+          icon: 'Setting', 
+          requiresAuth: true,
+          roles: ['allLeader']
         }
       }
     ]

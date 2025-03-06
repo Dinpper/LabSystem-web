@@ -7,6 +7,23 @@
           <el-form-item label="用户名称">
             <el-input v-model="searchForm.userName" placeholder="请输入用户名称" clearable />
           </el-form-item>
+          <el-form-item label="文件名称">
+            <el-input v-model="searchForm.fileName" placeholder="请输入文件名称" clearable />
+          </el-form-item>
+          <el-form-item label="文件类型">
+            <el-select
+              v-model="searchForm.fileType"
+              placeholder="请选择文件类型"
+              clearable
+            >
+              <el-option 
+                v-for="type in fileTypes" 
+                :key="type" 
+                :label="type" 
+                :value="type" 
+              />
+            </el-select>
+          </el-form-item>
           <el-form-item label="提交日期">
             <el-date-picker
               v-model="searchForm.reportDate"
@@ -93,6 +110,8 @@ import request from '@/utils/request'
 
 const searchForm = ref({
   userName: '',
+  fileName: '',
+  fileType: '',
   reportDate: ''
 })
 
@@ -102,6 +121,22 @@ const pageSize = ref(10)
 const total = ref(0)
 const jumpPage = ref('')
 
+// 文件类型列表
+const fileTypes = ref([])
+
+// 获取文件类型
+const getFileTypes = async () => {
+  try {
+    const response = await request.post('/file/getFileType')
+    if (response.data.code === '200') {
+      fileTypes.value = ['全部', ...response.data.data]
+    }
+  } catch (error) {
+    console.error('获取文件类型失败:', error)
+    ElMessage.error('获取文件类型失败')
+  }
+}
+
 // 获取学习收获列表
 const getHarvestList = async () => {
   try {
@@ -109,6 +144,8 @@ const getHarvestList = async () => {
       page: currentPage.value,
       size: pageSize.value,
       userName: searchForm.value.userName,
+      fileName: searchForm.value.fileName,
+      fileType: searchForm.value.fileType === '全部' ? '' : searchForm.value.fileType,
       reportDate: searchForm.value.reportDate
     })
 
@@ -139,6 +176,8 @@ const handleSearch = () => {
 const resetSearch = () => {
   searchForm.value = {
     userName: '',
+    fileName: '',
+    fileType: '',
     reportDate: ''
   }
   currentPage.value = 1
@@ -211,6 +250,7 @@ const handleDownload = async (row) => {
 
 onMounted(() => {
   getHarvestList()
+  getFileTypes()
 })
 </script>
 
@@ -255,5 +295,9 @@ onMounted(() => {
 
 :deep(.el-button--link:hover) {
   opacity: 0.8;
+}
+
+.el-select {
+  width: 160px;
 }
 </style> 
