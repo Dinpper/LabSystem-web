@@ -12,7 +12,6 @@ const service = axios.create({
 // 请求拦截器
 service.interceptors.request.use(
   config => {
-    console.log('发送请求:', config.url, config.data)
     const token = localStorage.getItem('token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
@@ -28,7 +27,6 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   response => {
-    console.log('响应数据:', response.data)
     if (response.data.code === '200') {
       return response
     } else {

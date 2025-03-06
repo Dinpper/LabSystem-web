@@ -159,11 +159,6 @@ const showAddTask = ref(false)
 // 获取统计数据
 const getStatistics = async () => {
   try {
-    // 添加调试日志
-    console.log('Store state:', userStore.$state)
-    console.log('Store account:', userStore.account)
-    console.log('Store getAccount:', userStore.getAccount)
-    console.log('LocalStorage account:', localStorage.getItem('account'))
 
     const account = userStore.getAccount
     if (!account) {
@@ -198,7 +193,6 @@ onMounted(() => {
 
 // 查询方法
 const handleSearch = async () => {
-  console.log('开始查询...')
   try {
     const params = {
       userName: searchForm.userName,
@@ -207,10 +201,7 @@ const handleSearch = async () => {
       page: currentPage.value
     }
 
-    console.log('发送请求前的参数:', params)
-
     const response = await request.post('/signDuration/querySignDurationByPage', params)
-    console.log('原始响应:', response)
 
     // 检查响应状态
     if (!response || !response.data) {
@@ -223,11 +214,9 @@ const handleSearch = async () => {
     }
 
     const { list, dataCount, page, size } = response.data.data
-    console.log('解析的数据:', { list, dataCount, page, size })
 
     // 更新表格数据
     tableData.value = [...list] // 使用展开运算符创建新数组
-    console.log('更新后的表格数据:', tableData.value)
 
     // 更新分页信息
     total.value = parseInt(dataCount)

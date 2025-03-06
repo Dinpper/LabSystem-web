@@ -250,7 +250,6 @@ const getCheckInStatus = async () => {
 
     if (response.data.code === '200') {
       statusType.value = response.data.data.statusType
-      console.log('当前状态:', statusType.value)
     }
   } catch (error) {
     console.error('获取状态失败:', error)
@@ -282,7 +281,6 @@ const handleCheckInOut = async () => {
 
 // 处理日期选择
 const handleDateSelect = async (date) => {
-  console.log('Selected date:', date) // 调试用
   const formattedDate = dayjs(date).format('YYYY-MM-DD')
   try {
     const response = await request.post('/meeting/queryMeetingByDate', {

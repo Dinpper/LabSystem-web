@@ -70,10 +70,8 @@ const handleLogin = () => {
     if (valid) {
       loading.value = true
       try {
-        console.log('登录表单:', loginForm)
         const response = await userStore.login(loginForm)
         if (response.code === '200') {
-          console.log('登录成功，account:', userStore.account)
           ElMessage.success('登录成功')
           router.push('/dashboard')
         }
