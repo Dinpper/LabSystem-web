@@ -108,12 +108,41 @@ export const constantRoutes = [
   {
     path: '/leave',
     component: Layout,
+    name: 'Leave',
+    meta: { title: '请假管理', icon: 'Timer', roles: ['allLeader', 'user'] },
     children: [
       {
-        path: '',
-        name: 'Leave',
-        component: () => import('@/views/leave/index.vue'),
-        meta: { title: '请假', icon: 'Timer', requiresAuth: true, roles: ['allLeader', 'user'] }
+        path: 'apply',
+        name: 'LeaveApply',
+        component: () => import('@/views/leave/apply.vue'),
+        meta: { 
+          title: '请假申请', 
+          icon: 'Edit', 
+          requiresAuth: true, 
+          roles: ['allLeader', 'user'] 
+        }
+      },
+      {
+        path: 'record',
+        name: 'LeaveRecord',
+        component: () => import('@/views/leave/record.vue'),
+        meta: { 
+          title: '请假记录', 
+          icon: 'List', 
+          requiresAuth: true, 
+          roles: ['allLeader', 'user'] 
+        }
+      },
+      {
+        path: 'process',
+        name: 'LeaveProcess',
+        component: () => import('@/views/leave/process.vue'),
+        meta: { 
+          title: '请假处理', 
+          icon: 'Finished', 
+          requiresAuth: true, 
+          roles: ['allLeader'] 
+        }
       }
     ]
   },
