@@ -74,6 +74,41 @@
                     {{ latestMeeting.description }}
                   </div>
                 </div>
+                <div class="meeting-actions">
+                  <template v-if="latestMeeting.status === 0">
+                    <el-button 
+                      type="primary" 
+                      size="small" 
+                      @click="handleAcceptMeeting(latestMeeting.meetingId)"
+                    >
+                      接受
+                    </el-button>
+                    <el-button 
+                      type="danger" 
+                      size="small" 
+                      @click="openRefuseDialog(latestMeeting.meetingId)"
+                    >
+                      拒绝
+                    </el-button>
+                  </template>
+                  <template v-else-if="latestMeeting.status === 1">
+                    <el-tag type="success">已接受</el-tag>
+                    <template v-if="canCheckIn">
+                      <el-button
+                        v-if="!latestMeeting.checkInTime"
+                        type="primary"
+                        size="small"
+                        @click="handleCheckIn(latestMeeting.meetingId)"
+                      >
+                        签到
+                      </el-button>
+                      <el-tag v-else type="success">
+                        已签到 {{ formatCheckInTime(latestMeeting.checkInTime) }}
+                      </el-tag>
+                    </template>
+                  </template>
+                  <el-tag v-else type="danger">已拒绝</el-tag>
+                </div>
               </div>
             </div>
           </div>
@@ -182,6 +217,30 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 拒绝原因对话框 -->
+    <el-dialog
+      v-model="refuseDialogVisible"
+      title="拒绝原因"
+      width="400px"
+    >
+      <el-form :model="refuseForm">
+        <el-form-item>
+          <el-input
+            v-model="refuseForm.reason"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入拒绝原因"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="refuseDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleRefuseMeeting">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -209,6 +268,11 @@ const latestMeeting = ref(null)
 const dayMeetings = ref([])
 const dialogVisible = ref(false)
 const selectedMeeting = ref(null)
+const refuseDialogVisible = ref(false)
+const refuseForm = ref({
+  reason: '',
+  meetingId: null
+})
 
 // 获取当前本地日期的函数
 const getLocalDate = () => {
@@ -421,6 +485,93 @@ const getCellClass = (data) => {
 const formatSelectedDate = computed(() => {
   return dayjs(selectedDate.value).format('MM月DD日')
 })
+
+// 接受会议
+const handleAcceptMeeting = async (meetingId) => {
+  try {
+    const response = await request.post('/userMeeting/acceptMeeting', {
+      account: userStore.account,
+      meetingId: meetingId
+    })
+    
+    if (response.data.code === '200') {
+      ElMessage.success('已接受会议')
+      getLatestMeeting()  // 刷新数据
+    }
+  } catch (error) {
+    console.error('接受会议失败:', error)
+    ElMessage.error('操作失败')
+  }
+}
+
+// 打开拒绝对话框
+const openRefuseDialog = (meetingId) => {
+  refuseForm.value.meetingId = meetingId
+  refuseForm.value.reason = ''
+  refuseDialogVisible.value = true
+}
+
+// 拒绝会议
+const handleRefuseMeeting = async () => {
+  if (!refuseForm.value.reason.trim()) {
+    ElMessage.warning('请输入拒绝原因')
+    return
+  }
+
+  try {
+    const response = await request.post('/userMeeting/refuseMeeting', {
+      reason: refuseForm.value.reason.trim(),
+      account: userStore.account,
+      meetingId: refuseForm.value.meetingId
+    })
+    
+    if (response.data.code === '200') {
+      ElMessage.success('已拒绝会议')
+      refuseDialogVisible.value = false
+      getLatestMeeting()  // 刷新数据
+    }
+  } catch (error) {
+    console.error('拒绝会议失败:', error)
+    ElMessage.error('操作失败')
+  }
+}
+
+// 判断是否可以签到
+const canCheckIn = computed(() => {
+  if (!latestMeeting.value) return false
+  
+  const now = dayjs()
+  const meetingTime = dayjs(
+    `${latestMeeting.value.reportDate} ${latestMeeting.value.startTime}`,
+    'YYYY-MM-DD HH:mm:ss'
+  )
+  
+  return now.isAfter(meetingTime)
+})
+
+// 格式化签到时间
+const formatCheckInTime = (time) => {
+  if (!time) return ''
+  return dayjs(time).format('HH:mm:ss')
+}
+
+// 会议签到
+const handleCheckIn = async (meetingId) => {
+  try {
+    const response = await request.post('/userMeeting/checkInMeeting', {
+      meetingId: meetingId,
+      account: userStore.account
+    })
+    
+    if (response.data.code === '200') {
+      ElMessage.success('签到成功')
+      getLatestMeeting()  // 刷新数据以获取最新的签到时间
+    }
+  } catch (error) {
+    console.error('签到失败:', error)
+    ElMessage.error('签到失败')
+  }
+}
 
 onMounted(() => {
   getCheckInStatus()
@@ -1419,5 +1570,24 @@ onMounted(() => {
 
 .meeting-list::-webkit-scrollbar-track {
   background-color: transparent;
+}
+
+.meeting-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;  /* 确保按钮和标签垂直对齐 */
+}
+
+.el-tag {
+  padding: 0 12px;
+  height: 24px;
+  line-height: 22px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>
