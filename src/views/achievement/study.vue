@@ -10,21 +10,19 @@
           <el-form-item label="文件名称">
             <el-input v-model="searchForm.fileName" placeholder="请输入文件名称" clearable />
           </el-form-item>
-          <el-form-item label="文件类型">
+          <el-form-item label="文件来源">
             <el-select
-              v-model="searchForm.fileType"
-              placeholder="请选择文件类型"
+              v-model="searchForm.sourceType"
+              placeholder="请选择文件来源"
               clearable
             >
-              <el-option 
-                v-for="type in fileTypes" 
-                :key="type" 
-                :label="type" 
-                :value="type" 
-              />
+              <el-option label="全部" value="" />
+              <el-option label="日报周报" :value="1" />
+              <el-option label="会议共享" :value="2" />
+              <el-option label="项目文件" :value="3" />
             </el-select>
           </el-form-item>
-          <el-form-item label="提交日期">
+          <el-form-item label="上传日期">
             <el-date-picker
               v-model="searchForm.reportDate"
               type="date"
@@ -50,22 +48,18 @@
           max-height="calc(100vh - 280px)"
         >
           <el-table-column type="index" label="序号" width="60" align="center" />
-          <el-table-column prop="fileName" label="成果名称" min-width="150" />
-          <el-table-column prop="userName" label="用户名称" width="120" align="center" />
-          <el-table-column prop="reportDate" label="提交日期" width="120" align="center">
+          <el-table-column prop="fileName" label="文件名称" min-width="150" />
+          <el-table-column prop="userName" label="上传人" width="120" align="center" />
+          <el-table-column prop="uploadedAt" label="上传时间" width="160" align="center" />
+          <el-table-column prop="fileType" label="文件类型" width="100" align="center" />
+          <el-table-column label="文件来源" width="100" align="center">
             <template #default="{ row }">
-              {{ formatDate(row.reportDate) }}
+              {{ getSourceTypeText(row.sourceType) }}
             </template>
           </el-table-column>
-          <el-table-column prop="filePath" label="文件路径" min-width="200" show-overflow-tooltip />
-          <el-table-column label="操作" width="100" align="center">
+          <el-table-column label="操作" width="100" fixed="right">
             <template #default="{ row }">
-              <el-button
-                type="primary"
-                link
-                :icon="Download"
-                @click="handleDownload(row)"
-              >
+              <el-button link type="primary" @click="handleDownload(row)">
                 下载
               </el-button>
             </template>
@@ -102,16 +96,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import request from '@/utils/request'
 
-const searchForm = ref({
+const searchForm = reactive({
   userName: '',
   fileName: '',
-  fileType: '',
+  sourceType: '',
   reportDate: ''
 })
 
@@ -121,43 +115,36 @@ const pageSize = ref(10)
 const total = ref(0)
 const jumpPage = ref('')
 
-// 文件类型列表
-const fileTypes = ref([])
-
-// 获取文件类型
-const getFileTypes = async () => {
-  try {
-    const response = await request.post('/file/getFileType')
-    if (response.data.code === '200') {
-      fileTypes.value = ['全部', ...response.data.data]
-    }
-  } catch (error) {
-    console.error('获取文件类型失败:', error)
-    ElMessage.error('获取文件类型失败')
+// 获取文件来源类型文本
+const getSourceTypeText = (type) => {
+  const typeMap = {
+    1: '日报周报',
+    2: '会议共享',
+    3: '项目文件'
   }
+  return typeMap[type] || '未知'
 }
 
-// 获取学习收获列表
-const getHarvestList = async () => {
+// 获取文件列表
+const getFileList = async () => {
   try {
-    const response = await request.post('/Harvest/queryHarvestByPage', {
+    const response = await request.post('/fileRecord/queryFileRecordByPage', {
       page: currentPage.value,
       size: pageSize.value,
-      userName: searchForm.value.userName,
-      fileName: searchForm.value.fileName,
-      fileType: searchForm.value.fileType === '全部' ? '' : searchForm.value.fileType,
-      reportDate: searchForm.value.reportDate
+      userName: searchForm.userName?.trim() || '',
+      fileName: searchForm.fileName?.trim() || '',
+      sourceType: searchForm.sourceType || undefined,  // 如果为空则不传此参数
+      reportDate: searchForm.reportDate
     })
 
     if (response.data.code === '200') {
-      tableData.value = response.data.data.HarvestList
-      total.value = response.data.data.dataCount
+      const { fileList, dataCount } = response.data.data
+      tableData.value = fileList
+      total.value = dataCount
     }
   } catch (error) {
-    console.error('获取学习收获列表失败:', error)
-    ElMessage.error('获取列表失败')
-    tableData.value = []
-    total.value = 0
+    console.error('获取文件列表失败:', error)
+    ElMessage.error('获取文件列表失败')
   }
 }
 
@@ -169,19 +156,19 @@ const formatDate = (date) => {
 // 搜索
 const handleSearch = () => {
   currentPage.value = 1
-  getHarvestList()
+  getFileList()
 }
 
 // 重置搜索
 const resetSearch = () => {
-  searchForm.value = {
+  Object.assign(searchForm, {
     userName: '',
     fileName: '',
-    fileType: '',
+    sourceType: '',
     reportDate: ''
-  }
+  })
   currentPage.value = 1
-  getHarvestList()
+  getFileList()
 }
 
 // 导出
@@ -193,13 +180,13 @@ const handleExport = () => {
 const handleSizeChange = (val) => {
   pageSize.value = val
   currentPage.value = 1
-  getHarvestList()
+  getFileList()
 }
 
 // 处理页码变化
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  getHarvestList()
+  getFileList()
 }
 
 // 跳转页面
@@ -207,7 +194,7 @@ const handleJumpPage = () => {
   const page = parseInt(jumpPage.value)
   if (page && page > 0 && page <= Math.ceil(total.value / pageSize.value)) {
     currentPage.value = page
-    getHarvestList()
+    getFileList()
   }
   jumpPage.value = ''
 }
@@ -249,8 +236,7 @@ const handleDownload = async (row) => {
 }
 
 onMounted(() => {
-  getHarvestList()
-  getFileTypes()
+  getFileList()
 })
 </script>
 
