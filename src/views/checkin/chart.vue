@@ -78,9 +78,16 @@ const updateChart = (dates, durations) => {
         return `${data.name}<br/>签到时长: ${data.value} 小时`
       }
     },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
     xAxis: {
       type: 'category',
       data: dates,
+      boundaryGap: false,
       axisLabel: {
         formatter: (value) => {
           const date = new Date(value)
@@ -96,10 +103,32 @@ const updateChart = (dates, durations) => {
     series: [
       {
         name: '签到时长',
-        type: 'bar',
+        type: 'line',
         data: durations,
+        smooth: true,
         itemStyle: {
+          color: '#409EFF',
+          borderWidth: 2
+        },
+        lineStyle: {
+          width: 3,
           color: '#409EFF'
+        },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [{
+              offset: 0,
+              color: 'rgba(64,158,255,0.2)'
+            }, {
+              offset: 1,
+              color: 'rgba(64,158,255,0)'
+            }]
+          }
         },
         label: {
           show: true,
@@ -107,78 +136,89 @@ const updateChart = (dates, durations) => {
           formatter: '{c} h'
         }
       }
-    ],
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    }
+    ]
   }
 
   chart.setOption(option)
 }
 
-// 获取各组签到数据
+// 获取各组签到时长数据
 const getGroupSignData = async () => {
   try {
     const response = await request.post('/record/queryGroupSignDuration')
-    
     if (response.data.code === '200') {
       const data = response.data.data
-      updatePieChart(data)
+      // 按签到时长降序排序
+      const sortedData = data.sort((a, b) => b.signDuration - a.signDuration)
+
+      // 设置图表配置
+      const option = {
+        title: {
+          text: '各组签到时长分布',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          },
+          formatter: params => {
+            const { name, value } = params[0]
+            return `${name}<br/>签到时长: ${value.toFixed(1)}小时`
+          }
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '15%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          data: sortedData.map(item => item.groupName),
+          axisLabel: {
+            interval: 0,
+            rotate: 45,
+            textStyle: {
+              fontSize: 12
+            }
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '签到时长(小时)'
+        },
+        series: [
+          {
+            name: '签到时长',
+            type: 'bar',
+            data: sortedData.map(item => ({
+              value: item.signDuration,
+              itemStyle: {
+                color: item.signDuration > 0 ? '#409EFF' : '#909399'
+              }
+            })),
+            label: {
+              show: true,
+              position: 'top',
+              formatter: '{c}h'
+            },
+            emphasis: {
+              itemStyle: {
+                color: '#66b1ff'
+              }
+            }
+          }
+        ]
+      }
+
+      // 更新图表
+      pieChart.setOption(option, true)
     }
   } catch (error) {
     console.error('获取组签到数据失败:', error)
-    ElMessage.error('获取数据失败')
+    ElMessage.error('获取组签到数据失败')
   }
-}
-
-// 更新饼图
-const updatePieChart = (data) => {
-  if (!pieChart) return
-
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c}小时 ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      right: 10,
-      top: 'center'
-    },
-    series: [
-      {
-        name: '签到时长',
-        type: 'pie',
-        radius: ['40%', '70%'],
-        avoidLabelOverlap: true,
-        itemStyle: {
-          borderRadius: 10,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        label: {
-          show: true,
-          formatter: '{b}: {c}h'
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: 16,
-            fontWeight: 'bold'
-          }
-        },
-        data: data.map(item => ({
-          name: item.groupName,
-          value: item.totalDuration
-        }))
-      }
-    ]
-  }
-
-  pieChart.setOption(option)
 }
 
 // 刷新数据
