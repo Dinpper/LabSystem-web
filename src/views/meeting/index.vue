@@ -44,6 +44,48 @@
           <el-table-column prop="location" label="地点" width="120" align="center" />
           <el-table-column prop="membersName" label="参会人员" min-width="200" show-overflow-tooltip />
           <el-table-column prop="description" label="会议内容" min-width="200" show-overflow-tooltip />
+          <el-table-column label="会议总结" min-width="200">
+            <template #default="{ row }">
+              <el-button 
+                v-if="!row.summary" 
+                link 
+                type="primary" 
+                @click="openSummaryDialog(row)"
+              >
+                添加总结
+              </el-button>
+              <div v-else class="summary-content" @click="openSummaryDialog(row)">
+                {{ row.summary }}
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="会议文件" min-width="180">
+            <template #default="{ row }">
+              <div class="file-list" v-if="row.files && row.files.length">
+                <el-tag
+                  v-for="file in row.files"
+                  :key="file.name"
+                  size="small"
+                  class="file-tag"
+                >
+                  <el-icon><Document /></el-icon>
+                  <span>{{ file.name }}</span>
+                </el-tag>
+              </div>
+              <el-upload
+                :action="null"
+                :auto-upload="false"
+                :on-change="(file) => handleFileChange(file, row)"
+                :show-file-list="false"
+                multiple
+              >
+                <el-button link type="primary">
+                  <el-icon><Upload /></el-icon>
+                  上传文件
+                </el-button>
+              </el-upload>
+            </template>
+          </el-table-column>
         </el-table>
       </div>
 
@@ -73,13 +115,41 @@
         <span>页</span>
       </div>
     </el-card>
+
+    <!-- 添加总结对话框 -->
+    <el-dialog
+      v-model="summaryDialogVisible"
+      title="会议总结"
+      width="500px"
+    >
+      <el-form :model="summaryForm">
+        <el-form-item>
+          <el-input
+            v-model="summaryForm.content"
+            type="textarea"
+            :rows="6"
+            placeholder="请输入会议总结"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="summaryDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitSummary">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Document, Upload } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
+
+const userStore = useUserStore()
 
 // 搜索表单数据
 const searchForm = reactive({
@@ -93,6 +163,13 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const jumpPage = ref('')
+
+// 总结相关
+const summaryDialogVisible = ref(false)
+const summaryForm = ref({
+  content: '',
+  meetingId: null
+})
 
 // 获取会议记录列表
 const getMeetingList = async () => {
@@ -203,6 +280,63 @@ const handleJumpPage = () => {
   jumpPage.value = ''
 }
 
+// 打开总结对话框
+const openSummaryDialog = (row) => {
+  summaryForm.value.content = row.summary || ''
+  summaryForm.value.meetingId = row.meetingId  // 使用正确的会议ID
+  summaryDialogVisible.value = true
+}
+
+// 提交总结
+const submitSummary = async () => {
+  try {
+    const response = await request.post('/meeting/updateSummary', {
+      meetingId: summaryForm.value.meetingId,
+      summary: summaryForm.value.content.trim()  // 去除首尾空格
+    })
+    
+    if (response.data.code === '200') {
+      ElMessage.success('保存成功')
+      summaryDialogVisible.value = false
+      getMeetingList()  // 刷新列表
+    }
+  } catch (error) {
+    console.error('保存总结失败:', error)
+    ElMessage.error('保存失败')
+  }
+}
+
+// 文件上传相关
+const handleFileChange = async (file, row) => {
+  const formData = new FormData()
+  
+  // 添加文件
+  formData.append('files', file.raw)
+  
+  // 添加JSON参数
+  const reportJson = {
+    uploadedBy: userStore.account,
+    relatedId: row.meetingId  // 使用会议ID作为关联ID
+  }
+  formData.append('reportJson', JSON.stringify(reportJson))
+  
+  try {
+    const response = await request.post('/meeting/uploadMultiple', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    if (response.data.code === '200') {
+      ElMessage.success('上传成功')
+      getMeetingList()  // 刷新列表
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    ElMessage.error('上传失败')
+  }
+}
+
 // 组件挂载时获取数据
 onMounted(() => {
   getMeetingList()
@@ -261,5 +395,37 @@ onMounted(() => {
 /* 日期选择器样式 */
 :deep(.el-date-editor) {
   width: 180px;
+}
+
+.file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.file-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 200px;
+}
+
+.file-tag span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-content {
+  cursor: pointer;
+  color: #606266;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-content:hover {
+  color: #409EFF;
 }
 </style> 

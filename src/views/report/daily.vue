@@ -112,9 +112,9 @@ const rules = {
 }
 
 const handleFileChange = (file) => {
-  const isLt10M = file.size / 1024 / 1024 < 10
+  const isLt10M = file.size / 1024 / 1024 < 1000
   if (!isLt10M) {
-    ElMessage.error('文件大小不能超过 10MB!')
+    ElMessage.error('文件大小不能超过 1000MB!')
     return false
   }
   reportForm.files.push(file.raw)
