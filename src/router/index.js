@@ -253,38 +253,38 @@ export const constantRoutes = [
   {
     path: '/portrait',
     component: Layout,
-    name: 'PortraitManage',
-    meta: { title: '画像分析', icon: 'PieChart', roles: ['allLeader', 'user'] },
+    name: 'Portrait',
+    meta: { title: '画像分析', icon: 'PieChart', roles: ['allLeader'] },
     children: [
       {
         path: 'certain',
         name: 'Certain',
         component: () => import('@/views/portrait/Certain.vue'),
-        meta: { title: '我的画像', icon: 'Search', requiresAuth: true, roles: ['allLeader', 'user'] }
+        meta: { title: '个人画像', icon: 'UserFilled', requiresAuth: true, roles: ['allLeader'] }
       },
       {
         path: 'board',
         name: 'Board',
         component: () => import('@/views/portrait/Board.vue'),
-        meta: { title: '表单展示', icon: 'Grid', requiresAuth: true, roles: ['allLeader', 'user'] }
+        meta: { title: '表单展示', icon: 'Grid', requiresAuth: true, roles: ['allLeader'] }
       },
       {
         path: 'kmeans',
         name: 'KMeans',
         component: () => import('@/views/portrait/KMeans.vue'),
-        meta: { title: '图表分析', icon: 'ScatterPlot', requiresAuth: true, roles: ['allLeader', 'user'] }
+        meta: { title: '图表分析', icon: 'TrendCharts', requiresAuth: true, roles: ['allLeader'] }
       },
       {
         path: 'agent',
         name: 'Agent',
         component: () => import('@/views/portrait/Agent.vue'),
-        meta: { title: '智能建议', icon: 'Cpu', requiresAuth: true, roles: ['allLeader', 'user'] }
+        meta: { title: '智能建议', icon: 'ChatLineRound', requiresAuth: true, roles: ['allLeader'] }
       },
       {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/portrait/Profile.vue'),
-        meta: { title: '个人信息', icon: 'User', requiresAuth: true, roles: ['allLeader', 'user'] }
+        meta: { title: '个人信息', icon: 'Avatar', requiresAuth: true, roles: ['allLeader'] }
       }
     ]
   }
