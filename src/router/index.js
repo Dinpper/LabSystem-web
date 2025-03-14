@@ -285,6 +285,12 @@ export const constantRoutes = [
         name: 'Profile',
         component: () => import('@/views/portrait/Profile.vue'),
         meta: { title: '个人信息', icon: 'Avatar', requiresAuth: true, roles: ['allLeader'] }
+      },
+      {
+        path: 'timeline',
+        name: 'Timeline',
+        component: () => import('@/views/portrait/Timeline.vue'),
+        meta: { title: '历史回顾', icon: 'Timer', requiresAuth: true, roles: ['allLeader'] }
       }
     ]
   }
