@@ -42,6 +42,9 @@ import { ref, computed, onMounted } from 'vue';
 import Papa from 'papaparse';
 import axios from 'axios';
 
+// 导入 CSV 文件
+import csvData from '@/assets/students_clustered.csv?raw';
+
 const students = ref([]);
 const filteredStudents = ref([]);
 const pageSize = 15;
@@ -146,7 +149,7 @@ const suggestions = [
 ];
 
 const fetchCSVData = async () => {
-  const response = await axios.get('/src/students_clustered.csv');
+  const response = await axios.get('/src/assets/students_clustered.csv');
   Papa.parse(response.data, {
     header: true,
     complete: (results) => {

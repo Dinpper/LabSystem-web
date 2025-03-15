@@ -7,10 +7,10 @@
             <div class="info-header">
               <img src="../../assets/avatar.jpg" alt="头像" class="avatar" />
               <div class="info-details">
-                <p>姓名: 庞嘉豪</p>
-                <p>学号: 2021212205223</p>
-                <p>专业: 计算机科学与技术</p>
-                <p>年级: 大四</p>
+                <p>姓名: {{ userInfo.userName || '--' }}</p>
+                <p>学号: {{ userInfo.stuNumber || '--' }}</p>
+                <p>专业: {{ userInfo.className || '--' }}</p>
+                <p>年级: {{ userInfo.grade || '--' }}</p>
               </div>
             </div>
           </el-card>
@@ -48,25 +48,26 @@ import { ref, onMounted, nextTick, onUnmounted } from 'vue';
 import * as echarts from 'echarts';
 // import 'echarts-wordcloud/dist/echarts-wordcloud.min.js';
 import 'echarts-wordcloud'
+import request from '@/utils/request'
 import axios from 'axios';
 import { useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/user';
+// 导入 CSV 文件
+import csvData from '@/assets/students_clustered.csv?raw';
 
 const route = useRoute();
 const userStore = useUserStore();
 const keywordsLoaded = ref(false);
 let tagCloudChart = null;  // 存储图表实例
+const userInfo = ref({});
 
 const loadKeywords = async () => {
   try {
-    const response = await axios.get('/src/students_clustered.csv');
-    const csvData = response.data;
 
     // 解析 CSV 数据
     const rows = csvData.split('\n');
     const headers = rows[0].split(',');
     const username = userStore.userName || '庞嘉豪';
-    
     const studentIndex = rows.findIndex(row => row.includes(username));
 
     if (studentIndex === -1) {
@@ -201,18 +202,38 @@ const calculateAbilityScores = (keywords) => {
   return scores;
 };
 
+// 获取用户信息
+const getUserInfo = async () => {
+  try {
+    const response = await request.post('/user/queryUserMessage', {
+      account: userStore.getAccount
+    })
+    
+    if (response.data.code === '200') {
+      userInfo.value = response.data.data;
+    } else {
+      console.error('获取用户信息失败:', response.data.message);
+    }
+  } catch (error) {
+    console.error('获取用户信息出错:', error);
+  }
+};
+
 onMounted(async () => {
   await nextTick(); // 确保 DOM 元素已加载
+  await getUserInfo(); // 获取用户信息
 
   // 获取并处理关键词数据
   try {
-    const response = await axios.get('/src/students_clustered.csv');
-    const csvData = response.data;
+    // 直接使用导入的 csvData
+    if (!csvData) {
+      throw new Error('无法加载学生数据');
+    }
 
     // 解析 CSV 数据
     const rows = csvData.split('\n');
     const headers = rows[0].split(',');
-    const username = route.query.username || '庞嘉豪';
+    const username = userStore.userName || '庞嘉豪';
     const studentIndex = rows.findIndex(row => row.includes(username));
 
     if (studentIndex === -1) {
