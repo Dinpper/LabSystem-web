@@ -28,7 +28,7 @@
             layout="prev, pager, next"
             :total="filteredStudents.length"
             :page-size="pageSize"
-            :current-page.sync="currentPage"
+            v-model:current-page="currentPage"
             @current-change="handlePageChange"
           />
         </el-main>
@@ -40,7 +40,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import Papa from 'papaparse';
-import axios from 'axios';
 
 // 导入 CSV 文件
 import csvData from '@/assets/students_clustered.csv?raw';
@@ -149,8 +148,7 @@ const suggestions = [
 ];
 
 const fetchCSVData = async () => {
-  const response = await axios.get('/src/assets/students_clustered.csv');
-  Papa.parse(response.data, {
+  Papa.parse(csvData, {
     header: true,
     complete: (results) => {
       students.value = results.data.map((row) => ({

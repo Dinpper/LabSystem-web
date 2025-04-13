@@ -202,38 +202,63 @@ const handleJumpPage = () => {
 // 处理文件下载
 const handleDownload = async (row) => {
   try {
-    // 创建一个临时的 form 表单
-    const form = document.createElement('form')
-    form.style.display = 'none'
-    form.method = 'post'
-    form.action = 'http://localhost:8880/Harvest/downloadHarvest'  // 使用完整的后端 URL
-    form.target = '_blank'  // 防止页面跳转
-    
-    // 创建 harvestId 输入字段
-    const input = document.createElement('input')
-    input.type = 'hidden'
-    input.name = 'harvestId'
-    input.value = row.harvestId
-    
-    // 将输入字段添加到表单中
-    form.appendChild(input)
-    
-    // 将表单添加到文档中并提交
-    document.body.appendChild(form)
-    form.submit()
-    
-    // 清理表单
-    setTimeout(() => {
-      document.body.removeChild(form)
-    }, 100)
-    
-    ElMessage.success('开始下载')
+    const params = {
+      harvestId: row.fileId
+    }
 
+
+
+    
+
+    const response = await fetch('/api/group/downloadFile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params) // 发送文件标识符
+    })
+
+    // 检查响应是否成功
+    if (!response.ok) {
+      throw new Error('导出失败，服务器错误')
+    }
+
+    // 获取文件名
+    const contentDisposition = response.headers.get('content-disposition')
+    const fileName = contentDisposition
+      ? decodeURIComponent(contentDisposition.split("''")[1])
+      : '文件'; // 默认文件名
+
+    // 获取文件类型
+    const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+
+    // 获取二进制数据
+    const blob = await response.blob()
+
+    // 创建下载链接
+    const url = window.URL.createObjectURL(
+      new Blob([blob], { type: contentType })
+    )
+
+    // 创建一个临时链接并点击
+    const link = document.createElement('a')
+    link.style.display = 'none'
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+
+    // 清理
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(link)
+
+    ElMessage.success('导出成功')
   } catch (error) {
-    console.error('文件下载失败:', error)
-    ElMessage.error('下载失败，请重试')
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
   }
 }
+
 
 onMounted(() => {
   getFileList()

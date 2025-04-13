@@ -254,7 +254,7 @@ export const constantRoutes = [
     path: '/portrait',
     component: Layout,
     name: 'Portrait',
-    meta: { title: '画像分析', icon: 'PieChart', roles: ['allLeader'] },
+    meta: { title: '画像分析', icon: 'PieChart', roles: ['allLeader', 'user', 'groupLeader'] },
     children: [
       {
         path: 'certain',
@@ -282,7 +282,7 @@ export const constantRoutes = [
       },
       {
         path: 'profile',
-        name: 'Profile',
+        name: 'PortraitProfile',
         component: () => import('@/views/portrait/Profile.vue'),
         meta: { title: '个人信息', icon: 'Avatar', requiresAuth: true, roles: ['allLeader', 'user', 'groupLeader'] }
       },

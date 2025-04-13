@@ -1,21 +1,19 @@
 <template>
-  <div class="agent-wrapper">
-    <div class="main-content">
-      <el-card class="chat-card">
-        <div class="chat-window" ref="chatWindow">
-          <div v-for="(message, index) in messages" :key="index" :class="['message', message.type]">
-            <span>{{ message.text }}</span>
-          </div>
+  <div class="main-content">
+    <el-card class="chat-card">
+      <div class="chat-window" ref="chatWindow">
+        <div v-for="(message, index) in messages" :key="index" :class="['message', message.type]">
+          <span>{{ message.text }}</span>
         </div>
-        <el-input
-          v-model="input"
-          placeholder="输入你的问题..."
-          @keyup.enter="sendMessage"
-          class="chat-input"
-        ></el-input>
-        <el-button type="primary" @click="sendMessage" class="send-button">发送</el-button>
-      </el-card>
-    </div>
+      </div>
+      <el-input
+        v-model="input"
+        placeholder="输入你的问题..."
+        @keyup.enter="sendMessage"
+        class="chat-input"
+      ></el-input>
+      <el-button type="primary" @click="sendMessage" class="send-button">发送</el-button>
+    </el-card>
   </div>
 </template>
 
@@ -23,38 +21,78 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { ElLoading } from 'element-plus';
+import { useRoute } from 'vue-router';
+import request from '@/utils/request'
+// 导入 CSV 文件
+import csvData from '@/assets/students_clustered.csv?raw';
 
+
+const route = useRoute();
 const messages = ref([
   { text: '你好！有什么我可以帮助你的吗？', type: 'bot' }
 ]);
 
 const input = ref('');
-let loadingInstance = null; // 用于存储加载实例
+let loadingInstance = null;
+const promptData = ref([]); // 改为响应式数据
 
-// 示例测试数据
-const promptData = [
-  "java",
-  "项目",
-  "开发"
-];
+// 获取学生关键词
+const loadStudentKeywords = async () => {
+  try {
+    // const response = await axios.get('/src/students_clustered.csv');
+    // const csvData = response.data;
+
+    // 解析 CSV 数据
+    const rows = csvData.split('\n');
+    const headers = rows[0].split(',');
+    const username = route.query.username || '庞嘉豪';
+    const studentIndex = rows.findIndex(row => row.includes(username));
+
+    if (studentIndex === -1) {
+      throw new Error('未找到指定学生');
+    }
+
+    const studentData = rows[studentIndex].split(',');
+    
+    // 获取关键词及其权重
+    const keywords = headers.slice(1, -2).map((header, index) => ({
+      name: header,
+      value: parseFloat(studentData[index + 1]) || 0
+    }));
+
+    // 过滤并排序关键词
+    const filteredKeywords = keywords
+      .filter(keyword => keyword.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10)
+      .map(keyword => keyword.name);
+
+    promptData.value = filteredKeywords;
+    console.log('已加载学生关键词:', promptData.value);
+  } catch (error) {
+    console.error('Error loading keywords:', error);
+    promptData.value = ['java', '项目', '开发']; // 使用默认值
+  }
+};
 
 const sendMessage = async () => {
   if (input.value.trim() !== '') {
     messages.value.push({ text: input.value, type: 'user' });
     const userInput = input.value;
     input.value = '';
-    loadingInstance = ElLoading.service({ target: '.chat-window' }); // 开始加载
+    loadingInstance = ElLoading.service({ target: '.chat-window' });
     try {
-      const response = await axios.post('http://172.22.236.90:8880/agent/ask', {
-        prompt: promptData,
+      const response = await request.post('/agent/ask', {
+        prompt: promptData.value,
         question: userInput
       });
-      simulateBotResponse(response.data);
+      simulateBotResponse(response.data.msg);
+      console.log(response.data);
     } catch (error) {
       console.error('Error fetching response:', error);
       messages.value.push({ text: '抱歉，无法获取回答。', type: 'bot' });
     } finally {
-      if (loadingInstance) loadingInstance.close(); // 结束加载
+      if (loadingInstance) loadingInstance.close();
     }
   }
 };
@@ -81,21 +119,18 @@ const scrollToBottom = () => {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 };
 
-onMounted(() => {
+onMounted(async () => {
+  await loadStudentKeywords(); // 加载学生关键词
   scrollToBottom();
 });
 </script>
 
 <style scoped>
-.agent-wrapper {
-  height: calc(100vh - 84px); /* 减去顶部导航栏的高度 */
-  overflow-y: auto;
-}
-
 .main-content {
   padding: 20px;
   background: linear-gradient(to right, #f3e7e9, #e3eeff);
   color: #333;
+  min-height: 100vh;
 }
 
 .chat-card {
@@ -144,25 +179,5 @@ onMounted(() => {
 
 .send-button {
   align-self: flex-end;
-}
-
-/* 自定义滚动条样式 */
-.agent-wrapper::-webkit-scrollbar {
-  width: 8px;
-}
-
-.agent-wrapper::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-.agent-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  transition: background 0.3s;
-}
-
-.agent-wrapper::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
 }
 </style>
