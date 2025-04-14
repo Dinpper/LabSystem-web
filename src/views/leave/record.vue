@@ -172,8 +172,8 @@ const getLeaveRecords = async () => {
   try {
     const [startDate, endDate] = searchForm.value.dateRange || []
     const params = {
-      pageNum: currentPage.value,
-      pageSize: pageSize.value,
+      page: currentPage.value,
+      size: pageSize.value,
       userName: searchForm.value.userName || undefined,
       reportDate: startDate || undefined,
       state: searchForm.value.state || undefined

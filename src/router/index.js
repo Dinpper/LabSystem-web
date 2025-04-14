@@ -95,7 +95,7 @@ export const constantRoutes = [
         path: 'schedule',
         name: 'MeetingSchedule',
         component: () => import('@/views/meeting/schedule.vue'),
-        meta: { title: '会议发布', icon: 'AlarmClock', requiresAuth: true, roles: ['allLeader', 'user', 'groupLeader'] }
+        meta: { title: '会议发布', icon: 'AlarmClock', requiresAuth: true, roles: ['allLeader', 'groupLeader'] }
       },
       {
         path: '',

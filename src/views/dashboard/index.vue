@@ -20,14 +20,14 @@
             </div>
             <!-- 右侧统计信息和签到 -->
             <div class="stats-info">
-              <div class="stat-item">
+              <!-- <div class="stat-item">
                 <div class="stat-value">1</div>
                 <div class="stat-label">累计登录天数</div>
               </div>
               <div class="stat-item">
                 <div class="stat-value">36</div>
                 <div class="stat-label">本周使用时间(小时)</div>
-              </div>
+              </div> -->
               <div class="stat-item checkin-wrapper">
                 <el-button 
                   type="primary" 

@@ -215,8 +215,8 @@ const getLeaveRecords = async () => {
   loading.value = true
   try {
     const response = await request.post('/leave/queryLeaveByPage', {
-      pageNum: currentPage.value,
-      pageSize: pageSize.value,
+      page: currentPage.value,
+      size: pageSize.value,
       state: '0'  // 固定传0，只查待审批的记录
     })
 
