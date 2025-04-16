@@ -120,18 +120,15 @@ const loadKeywords = async () => {
 const downloadReport = async () => {
   try {
     const postElements = {
-      username: '庞嘉豪',
-      totalHour: '120',
-      totalReport: '15',
-      totalNum: '15000',
-      percentage: '85',
+      username: userStore.userName,
+      account: userStore.getAccount,
       kw1: '编程',
       kw2: '数据分析',
       kw3: '项目管理',
       kw4: '团队合作'
     };
-
-    const response = await axios.post('http://172.22.236.90:8880/user/post', postElements, {
+    console.log(postElements)
+    const response = await axios.post('http://172.22.236.90/api/user/post', postElements, {
       responseType: 'blob' // 确保接收的是二进制数据
     });
 

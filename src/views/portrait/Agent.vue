@@ -25,9 +25,11 @@ import { useRoute } from 'vue-router';
 import request from '@/utils/request'
 // 导入 CSV 文件
 import csvData from '@/assets/students_clustered.csv?raw';
+import {useUserStore} from "@/stores/user.js";
 
 
 const route = useRoute();
+const userStore = useUserStore();
 const messages = ref([
   { text: '你好！有什么我可以帮助你的吗？', type: 'bot' }
 ]);
@@ -45,7 +47,7 @@ const loadStudentKeywords = async () => {
     // 解析 CSV 数据
     const rows = csvData.split('\n');
     const headers = rows[0].split(',');
-    const username = route.query.username || '庞嘉豪';
+    const username = userStore.userName || '庞嘉豪';
     const studentIndex = rows.findIndex(row => row.includes(username));
 
     if (studentIndex === -1) {
@@ -86,8 +88,10 @@ const sendMessage = async () => {
         prompt: promptData.value,
         question: userInput
       });
-      simulateBotResponse(response.data.msg);
+      console.log('完整返回内容：', response);
       console.log(response.data);
+      simulateBotResponse(response.data.msg);
+
     } catch (error) {
       console.error('Error fetching response:', error);
       messages.value.push({ text: '抱歉，无法获取回答。', type: 'bot' });
