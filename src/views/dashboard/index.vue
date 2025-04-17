@@ -29,12 +29,13 @@
                 <div class="stat-label">本周使用时间(小时)</div>
               </div> -->
               <div class="stat-item checkin-wrapper">
-                <el-button 
-                  type="primary" 
+                <el-button
+                  type="primary"
                   class="check-button"
+                  :loading="checkButtonLoading"
                   @click="handleCheckInOut"
                 >
-                  {{ statusType === 1 ? '签到' : '签退' }}
+                  {{ checkButtonLoading ? (statusType === 1 ? '签到中...' : '签退中...') : (statusType === 1 ? '签到' : '签退') }}
                 </el-button>
               </div>
             </div>
@@ -251,6 +252,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { ArrowLeft, ArrowRight, Location, More, Plus, Bell, Calendar, Document, User, UserFilled, Timer } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
+import debounce from 'lodash.debounce'
 
 const userStore = useUserStore()
 const account = userStore.username
@@ -273,6 +275,9 @@ const refuseForm = ref({
   reason: '',
   meetingId: null
 })
+
+const checkButtonLoading = ref(false)
+
 
 // 获取当前本地日期的函数
 const getLocalDate = () => {
@@ -322,24 +327,27 @@ const getCheckInStatus = async () => {
 
 // 签到/签退处理
 const handleCheckInOut = async () => {
+  if (checkButtonLoading.value) return
+
+  checkButtonLoading.value = true
   try {
     const account = userStore.getAccount
     if (!account) {
       throw new Error('未获取到用户账号')
     }
 
-    // 修改判断逻辑
     const url = statusType.value === 1 ? '/record/checkIn' : '/record/checkOut'
-    const response = await request.post(url, {
-      account: account
-    })
-    
-    // 修改提示消息
+    const res = await request.post(url, { account })
+
     ElMessage.success(statusType.value === 1 ? '签到成功' : '签退成功')
-    // 更新状态
+
+    // 接口成功后立即刷新状态，触发按钮文案切换
     await getCheckInStatus()
-  } catch (error) {
-    console.error('操作失败:', error)
+  } catch (err) {
+    console.error(err)
+    ElMessage.error('操作失败，请稍后重试')
+  } finally {
+    checkButtonLoading.value = false
   }
 }
 
