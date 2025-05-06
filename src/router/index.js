@@ -224,16 +224,50 @@ export const constantRoutes = [
   {
     path: '/system',
     component: Layout,
+    name: 'EmailConfig',
+    meta: { 
+      title: '邮件配置', 
+      icon: 'Message', 
+      roles: ['allLeader']
+    },
     children: [
       {
-        path: '',
-        name: 'SystemConfig',
+        path: 'send',
+        name: 'SendConfig',
         component: () => import('@/views/system/index.vue'),
         meta: { 
-          title: '系统配置', 
+          title: '发送配置', 
           icon: 'Setting', 
           requiresAuth: true,
           roles: ['allLeader']
+        }
+      },
+      {
+        path: 'content',
+        name: 'ContentConfig',
+        component: () => import('@/views/system/content.vue'),
+        meta: { 
+          title: '内容配置', 
+          icon: 'Document', 
+          requiresAuth: true,
+          roles: ['allLeader']
+        }
+      }
+    ]
+  },
+  {
+    path: '/analysis',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'PersonalAnalysis',
+        component: () => import('@/views/analysis/index.vue'),
+        meta: { 
+          title: '个人分析', 
+          icon: 'DataAnalysis', 
+          requiresAuth: true,
+          roles: ['allLeader', 'user', 'groupLeader']
         }
       }
     ]

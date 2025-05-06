@@ -31,11 +31,8 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" fixed="right">
+          <el-table-column label="操作" width="100" fixed="right">
             <template #default="scope">
-              <el-button link type="primary" @click="handleEdit(scope.row)">
-                编辑
-              </el-button>
               <el-button link type="danger" @click="handleDelete(scope.row)">
                 删除
               </el-button>
@@ -133,7 +130,8 @@ const formRef = ref(null)
 const form = reactive({
   groupName: '',
   leaderName: '',
-  reportFlag: 1
+  reportFlag: 1,
+  originalGroupName: ''  // 添加原始组名字段
 })
 
 // 表单校验规则
@@ -242,8 +240,15 @@ const handleJumpPage = () => {
 
 // 编辑小组
 const handleEdit = (row) => {
-  // TODO: 等待接口提供后实现
-  ElMessage.info('编辑功能开发中')
+  dialogTitle.value = '编辑小组'
+  // 重置并设置表单数据
+  Object.assign(form, {
+    groupName: row.groupName,
+    leaderName: row.leaderAccount || row.leaderName, // 优先使用leaderAccount
+    reportFlag: row.reportFlag,
+    originalGroupName: row.groupName
+  })
+  dialogVisible.value = true
 }
 
 // 删除小组
@@ -284,9 +289,13 @@ const handleDelete = (row) => {
 // 新增小组
 const handleAdd = () => {
   dialogTitle.value = '新增小组'
-  form.groupName = ''
-  form.leaderName = ''
-  form.reportFlag = 1
+  // 重置表单数据
+  Object.assign(form, {
+    groupName: '',
+    leaderName: '',
+    reportFlag: 1,
+    originalGroupName: ''  // 清空原始组名
+  })
   dialogVisible.value = true
 }
 
@@ -312,21 +321,31 @@ const handleSave = async () => {
           throw new Error('未获取到操作人账号')
         }
 
-        const response = await request.post('/group/addGroup', {
+        // 根据是否有originalGroupName判断是新增还是编辑
+        const isEdit = form.originalGroupName !== ''
+        const url = isEdit ? '/group/updateGroup' : '/group/addGroup'
+        const params = isEdit ? {
+          groupName: form.groupName.trim(),
+          leaderAccount: form.leaderName.trim(),
+          reportFlag: form.reportFlag,
+          originalGroupName: form.originalGroupName
+        } : {
           operator,
-          groupName: form.groupName.trim(),  // 去除首尾空格
-          leaderName: form.leaderName.trim(),  // 去除首尾空格
+          groupName: form.groupName.trim(),
+          leaderName: form.leaderName.trim(),
           reportFlag: form.reportFlag
-        })
+        }
+
+        const response = await request.post(url, params)
 
         if (response.data.code === '200') {
-          ElMessage.success('新增成功')
+          ElMessage.success(isEdit ? '编辑成功' : '新增成功')
           dialogVisible.value = false
           getGroups()  // 刷新列表
         }
       } catch (error) {
-        console.error('新增失败:', error)
-        ElMessage.error('新增失败：' + error.message)
+        console.error(isEdit ? '编辑失败:' : '新增失败:', error)
+        ElMessage.error((isEdit ? '编辑' : '新增') + '失败：' + error.message)
       }
     }
   })

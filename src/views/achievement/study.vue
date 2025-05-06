@@ -139,6 +139,10 @@ const getFileList = async () => {
 
     if (response.data.code === '200') {
       const { fileList, dataCount } = response.data.data
+      // 打印一条数据，查看结构
+      if (fileList.length > 0) {
+        console.log('File data structure:', fileList[0])
+      }
       tableData.value = fileList
       total.value = dataCount
     }
@@ -202,62 +206,58 @@ const handleJumpPage = () => {
 // 处理文件下载
 const handleDownload = async (row) => {
   try {
-    const params = {
-      harvestId: row.fileId
-    }
+    const params = { id: row.id };
 
-
-
-    
-
-    const response = await fetch('/api/group/downloadFile', {
+    const response = await fetch('/api/fileRecord/downloadFile', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(params) // 发送文件标识符
-    })
+      body: JSON.stringify(params),
+    });
 
     // 检查响应是否成功
     if (!response.ok) {
-      throw new Error('导出失败，服务器错误')
+      throw new Error('下载失败');
     }
 
     // 获取文件名
-    const contentDisposition = response.headers.get('content-disposition')
-    const fileName = contentDisposition
-      ? decodeURIComponent(contentDisposition.split("''")[1])
-      : '文件'; // 默认文件名
+    const contentDisposition = response.headers.get('content-disposition');
+    let fileName = row.fileName;  // 默认文件名
+    if (contentDisposition) {
+      const matches = contentDisposition.match(/filename=["](.*?)["]/); // 使用正则解析文件名
+      if (matches && matches[1]) {
+        fileName = decodeURIComponent(matches[1]);
+      }
+    }
 
     // 获取文件类型
     const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
 
     // 获取二进制数据
-    const blob = await response.blob()
+    const blob = await response.blob();
 
     // 创建下载链接
-    const url = window.URL.createObjectURL(
-      new Blob([blob], { type: contentType })
-    )
+    const url = window.URL.createObjectURL(new Blob([blob], { type: contentType }));
 
     // 创建一个临时链接并点击
-    const link = document.createElement('a')
-    link.style.display = 'none'
-    link.href = url
-    link.download = fileName
-    document.body.appendChild(link)
-    link.click()
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
 
     // 清理
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(link);
 
-    ElMessage.success('导出成功')
+    ElMessage.success('下载成功');
   } catch (error) {
-    console.error('导出失败:', error)
-    ElMessage.error('导出失败')
+    console.error('下载失败:', error);
+    ElMessage.error('下载失败');
   }
-}
+};
 
 
 onMounted(() => {
