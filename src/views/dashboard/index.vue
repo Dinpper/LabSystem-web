@@ -337,15 +337,26 @@ const handleCheckInOut = async () => {
     }
 
     const url = statusType.value === 1 ? '/record/checkIn' : '/record/checkOut'
-    const res = await request.post(url, { account })
+    // 直接使用 fetch 而不是封装的 request，以避免重复的错误处理
+    const response = await fetch(`/api${url}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ account })
+    })
 
-    ElMessage.success(statusType.value === 1 ? '签到成功' : '签退成功')
-
-    // 接口成功后立即刷新状态，触发按钮文案切换
-    await getCheckInStatus()
+    const data = await response.json()
+    
+    if (data.code === '200') {
+      ElMessage.success(statusType.value === 1 ? '签到成功' : '签退成功')
+      await getCheckInStatus()
+    } else {
+      ElMessage.error(data.message || '操作失败，请稍后重试')
+    }
   } catch (err) {
     console.error(err)
-    ElMessage.error('操作失败，请稍后重试')
+    ElMessage.error('网络错误，请稍后重试')
   } finally {
     checkButtonLoading.value = false
   }
@@ -576,8 +587,34 @@ const handleCheckIn = async (meetingId) => {
       getLatestMeeting()  // 刷新数据以获取最新的签到时间
     }
   } catch (error) {
-    console.error('签到失败:', error)
-    ElMessage.error('签到失败')
+    // console.error('签到失败:', error)
+    // 如果是实验室内网错误，只显示该错误
+    if (error.message?.includes('签到失败，请通过实验室内网签到')) {
+      ElMessage.error('签到失败，请通过实验室内网签到')
+    } else {
+      ElMessage.error('操作失败，请稍后重试')
+    }
+  }
+}
+
+// 签退
+const handleCheckOut = async () => {
+  try {
+    const response = await request.post('/record/checkOut')
+    if (response.data.code === '200') {
+      ElMessage.success('签退成功')
+      getCheckInStatus()
+    } else {
+      throw new Error(response.data.message || '签退失败')
+    }
+  } catch (error) {
+    // console.error('签退失败:', error)
+    // 如果是实验室内网错误，只显示该错误
+    if (error.message?.includes('签退失败，请通过实验室内网签退')) {
+      ElMessage.error('签退失败，请通过实验室内网签退')
+    } else {
+      ElMessage.error('操作失败，请稍后重试')
+    }
   }
 }
 
