@@ -53,6 +53,21 @@
               </el-tag>
             </template>
           </el-table-column>
+          <el-table-column label="角色权限" width="160" align="center">
+            <template #default="{ row }">
+              <template v-if="editingRoleRow === row.account">
+                <el-select v-model="editingRoleId" placeholder="请选择角色" size="small" style="width: 100px;">
+                  <el-option v-for="item in roleOptions" :key="item.roleId" :label="item.description" :value="item.roleId" />
+                </el-select>
+                <el-button type="primary" size="small" @click="saveEditRole(row)" style="margin-left: 6px;">保存</el-button>
+                <el-button size="small" @click="cancelEditRole" style="margin-left: 2px;">取消</el-button>
+              </template>
+              <template v-else>
+                <span>{{ row.roleDescription }}</span>
+                <el-button type="text" size="small" @click="startEditRole(row)">修改</el-button>
+              </template>
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="180" fixed="right">
             <template #default="scope">
               <el-button link type="primary" @click="handleEdit(scope.row)">
@@ -120,6 +135,11 @@
               active-text="上报"
               inactive-text="不上报"
             />
+          </el-form-item>
+          <el-form-item label="角色权限">
+            <el-select v-model="editForm.roleDescription" placeholder="请选择角色">
+              <el-option v-for="item in roleOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
           </el-form-item>
         </el-form>
         <template #footer>
@@ -211,13 +231,15 @@ const editForm = reactive({
   account: '',
   name: '',
   groupName: '',
-  reportFlag: 0
+  reportFlag: 0,
+  roleDescription: ''
 })
 
 // 保存原始数据用于比较
 const originalForm = reactive({
   groupName: '',
-  reportFlag: 0
+  reportFlag: 0,
+  roleDescription: ''
 })
 
 // 编辑人员
@@ -226,9 +248,11 @@ const handleEdit = (row) => {
   editForm.name = row.userName
   editForm.groupName = row.groupName
   editForm.reportFlag = row.reportFlag
+  editForm.roleDescription = row.roleDescription
   // 保存原始数据
   originalForm.groupName = row.groupName
   originalForm.reportFlag = row.reportFlag
+  originalForm.roleDescription = row.roleDescription
   dialogVisible.value = true
 }
 
@@ -237,24 +261,23 @@ const handleSave = async () => {
   try {
     // 检查数据是否被修改
     if (editForm.groupName === originalForm.groupName && 
-        editForm.reportFlag === originalForm.reportFlag) {
+        editForm.reportFlag === originalForm.reportFlag &&
+        editForm.roleDescription === originalForm.roleDescription) {
       ElMessage.info('未修改任何数据')
       dialogVisible.value = false
       return
     }
-    
     const operator = userStore.getAccount
     if (!operator) {
       throw new Error('未获取到操作人账号')
     }
-    
     const response = await request.post('/user/updateUser', {
       operator,
       account: editForm.account,
       groupName: editForm.groupName,
-      reportFlag: editForm.reportFlag
+      reportFlag: editForm.reportFlag,
+      roleDescription: editForm.roleDescription
     })
-    
     if (response.data.code === '200') {
       ElMessage.success('保存成功')
       dialogVisible.value = false
@@ -374,10 +397,58 @@ const handleExport = async () => {
   }
 }
 
+// 角色权限下拉选项
+const roleOptions = ref([])
+const editingRoleRow = ref(null)
+const editingRoleId = ref(null)
+
+const fetchRoleOptions = async () => {
+  try {
+    const response = await request.post('/user/queryRoleList')
+    if (response.data.code === '200') {
+      roleOptions.value = response.data.data || []
+    }
+  } catch (e) {
+    roleOptions.value = []
+  }
+}
+
+// 角色权限列显示和编辑逻辑
+const startEditRole = (row) => {
+  editingRoleRow.value = row.account
+  // 找到当前 description 匹配的 roleId
+  const match = roleOptions.value.find(r => r.description === row.roleDescription)
+  editingRoleId.value = match ? match.roleId : null
+}
+const cancelEditRole = () => {
+  editingRoleRow.value = null
+  editingRoleId.value = null
+}
+const saveEditRole = async (row) => {
+  try {
+    const operator = userStore.getAccount
+    if (!operator) throw new Error('未获取到操作人账号')
+    const response = await request.post('/user/updateUserRole', {
+      operator,
+      account: row.account,
+      roleId: editingRoleId.value
+    })
+    if (response.data.code === '200') {
+      ElMessage.success('角色权限已更新')
+      editingRoleRow.value = null
+      editingRoleId.value = null
+      getMembers()
+    }
+  } catch (error) {
+    ElMessage.error('角色权限更新失败')
+  }
+}
+
 // 组件挂载时获取数据
 onMounted(() => {
   getGroups()
   getMembers()
+  fetchRoleOptions()
 })
 </script>
 
