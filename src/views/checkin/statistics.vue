@@ -151,7 +151,7 @@ const handleExport = async () => {
       groupName: searchForm.groupName
     }
     
-    const response = await fetch('/api/checkin/download', {
+    const response = await fetch('/api/signDuration/signDurationDownload', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

@@ -314,12 +314,12 @@ export const constantRoutes = [
         component: () => import('@/views/portrait/Agent.vue'),
         meta: { title: '智能建议', icon: 'ChatLineRound', requiresAuth: true, roles: ['allLeader', 'user', 'groupLeader'] }
       },
-      {
-        path: 'profile',
-        name: 'PortraitProfile',
-        component: () => import('@/views/portrait/Profile.vue'),
-        meta: { title: '个人信息', icon: 'Avatar', requiresAuth: true, roles: ['allLeader', 'user', 'groupLeader'] }
-      },
+      // {
+      //   path: 'profile',
+      //   name: 'PortraitProfile',
+      //   component: () => import('@/views/portrait/Profile.vue'),
+      //   meta: { title: '个人信息', icon: 'Avatar', requiresAuth: true, roles: ['allLeader', 'user', 'groupLeader'] }
+      // },
       {
         path: 'timeline',
         name: 'Timeline',
