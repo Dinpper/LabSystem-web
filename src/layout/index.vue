@@ -189,19 +189,27 @@ onMounted(() => {
   initTags()  // 初始化标签导航
 })
 
-// 根据角色过滤路由
+// 根据角色过滤路由并隐藏 hideInMenu
 const filteredRoutes = computed(() => {
   const userRole = localStorage.getItem('userRole')
   return constantRoutes.filter(route => {
-    // 排除登录路由
-    if (route.path === '/login') {
-      return false
-    }
+    // 排除登录和注册等隐藏路由
+    if (route.meta?.hideInMenu) return false
+    if (route.path === '/login') return false
     // 检查是否有权限访问
     if (route.meta && route.meta.roles) {
       return route.meta.roles.includes(userRole)
     }
     return true
+  }).map(route => {
+    // 递归过滤子路由
+    if (route.children && route.children.length) {
+      return {
+        ...route,
+        children: route.children.filter(child => !child.meta?.hideInMenu)
+      }
+    }
+    return route
   })
 })
 

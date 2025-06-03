@@ -36,6 +36,10 @@
           </el-button>
         </el-form-item>
       </el-form>
+      <div class="register-link">
+        <span>还没有账号？</span>
+        <el-button type="text" @click="goRegister">注册</el-button>
+      </div>
     </div>
   </div>
 </template>
@@ -84,6 +88,10 @@ const handleLogin = () => {
     }
   })
 }
+
+const goRegister = () => {
+  router.push('/register')
+}
 </script>
 
 <style scoped>
@@ -101,6 +109,7 @@ const handleLogin = () => {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  position: relative;
 }
 
 .title {
@@ -116,5 +125,15 @@ const handleLogin = () => {
 
 .login-button {
   width: 100%;
+}
+
+.register-link {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  font-size: 14px;
+  color: #909399;
+  display: flex;
+  align-items: center;
 }
 </style> 

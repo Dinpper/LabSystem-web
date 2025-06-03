@@ -327,6 +327,16 @@ export const constantRoutes = [
         meta: { title: '历史回顾', icon: 'Timer', requiresAuth: true, roles: ['allLeader', 'user', 'groupLeader'] }
       }
     ]
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/Register.vue'),
+    meta: {
+      title: '注册',
+      requiresAuth: false,
+      hideInMenu: true  // 在菜单中隐藏
+    }
   }
 ]
 
@@ -337,9 +347,9 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
-  // 如果是访问登录页
-  if (to.path === '/login') {
-    if (localStorage.getItem('userRole')) {
+  // 如果是访问登录页或注册页
+  if (to.path === '/login' || to.path === '/register') {
+    if (to.path === '/login' && localStorage.getItem('userRole')) {
       next({ path: '/dashboard' })
     } else {
       next()
